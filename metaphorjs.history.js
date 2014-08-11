@@ -96,7 +96,7 @@
         }
 
         if (window.MetaphorJs) {
-            MetaphorJs.trigger("locationchange", url);
+            MetaphorJs.triggerAsync("locationchange", url);
         }
     };
 
