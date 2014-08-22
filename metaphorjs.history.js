@@ -2,11 +2,14 @@
 
 (function(){
 
-    var listeners       = [],
+    var listeners       = {
+            locationChange: [],
+            beforeLocationChange: []
+        },
         windowLoaded    = false,
-        rURL            = /(?:(\w+\:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/;
+        rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
-    var addListener         = function(el, event, func) {
+        addListener         = function(el, event, func) {
             if (el.attachEvent) {
                 el.attachEvent('on' + event, func);
             } else {
@@ -48,11 +51,37 @@
             return true;
         }
 
-        if (location.port != matches[3]) {
-            return false;
+        return location.port == matches[3];
+    };
+
+    var getPathFromUrl  = function(url) {
+
+        url = "" + url;
+
+        var matches = url.match(rURL),
+            path,
+            hash;
+
+        if (!pushStateSupported) {
+            hash    = matches[6];
+            if (hash.substr(0,1) == "!") {
+                path    = hash.substr(1);
+            }
         }
 
-        return true;
+        if (!path) {
+            path    = matches[4];
+
+            if (matches[5]) {
+                path    += "?" + matches[5];
+            }
+        }
+
+        return path;
+    };
+
+    var samePathLink = function(url) {
+        return getPathFromUrl(url) == getPathFromUrl(window.location);
     };
 
     var setHash = function(hash) {
@@ -87,17 +116,28 @@
         return loc;
     };
 
-    var triggerLocationChange = function triggerLocationChange() {
+    var triggerEvent = function triggerEvent(event, breakable, data) {
 
-        var url = getCurrentUrl();
+        var url = data || getCurrentUrl(),
+            res;
 
-        if (listeners.length) {
-            for (var i = -1, l = listeners.length; ++i < l; listeners[i].call(null, url)){}
+        for (var i = -1, l = listeners[event].length; ++i < l;){
+            res = listeners[event][i].call(null, url);
+            if (breakable && res === false) {
+                return false;
+            }
         }
 
         if (window.MetaphorJs) {
-            MetaphorJs.triggerAsync("locationchange", url);
+            if (breakable) {
+                return MetaphorJs.trigger(event, url);
+            }
+            else {
+                MetaphorJs.triggerAsync(event, url);
+            }
         }
+
+        return null;
     };
 
     var init = function() {
@@ -108,16 +148,24 @@
             history.origPushState       = history.pushState;
             history.origReplaceState    = history.replaceState;
 
-            addListener(window, "popstate", triggerLocationChange);
+            addListener(window, "popstate", function(){
+                triggerEvent("locationChange");
+            });
 
             history.pushState = function(state, title, url) {
+                if (triggerEvent("beforeLocationChange", true, url) === false) {
+                    return false;
+                }
                 history.origPushState(state, title, preparePath(url));
-                triggerLocationChange();
+                triggerEvent("locationChange");
             };
 
             history.replaceState = function(state, title, url) {
+                if (triggerEvent("beforeLocationChange", true, url) === false) {
+                    return false;
+                }
                 history.origReplaceState(state, title, preparePath(url));
-                triggerLocationChange();
+                triggerEvent("locationChange");
             };
         }
         else {
@@ -126,9 +174,14 @@
             if (hashChangeSupported) {
 
                 history.replaceState = history.pushState = function(state, title, url) {
+                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                        return false;
+                    }
                     setHash(preparePath(url));
                 };
-                addListener(window, "hashchange", triggerLocationChange);
+                addListener(window, "hashchange", function(){
+                    triggerEvent("locationChange");
+                });
             }
             // iframe
             else {
@@ -146,7 +199,7 @@
                 window.onIframeHistoryChange = function(val) {
                     if (!initialUpdate) {
                         setHash(val);
-                        triggerLocationChange();
+                        triggerEvent("locationChange");
                     }
                 };
 
@@ -170,10 +223,16 @@
 
 
                 history.pushState = function(state, title, url) {
+                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                        return false;
+                    }
                     pushFrame(preparePath(url));
                 };
 
                 history.replaceState = function(state, title, url) {
+                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                        return false;
+                    }
                     replaceFrame(preparePath(url));
                 };
 
@@ -210,13 +269,18 @@
 
                 href = a.getAttribute("href");
 
-                if (href && href.substr(0,1) != "#" && sameHostLink(href) && !a.getAttribute("target")) {
-                    history.pushState(null, null, a.getAttribute('href'));
+
+                if (href && href.substr(0,1) != "#" && !a.getAttribute("target") &&
+                    sameHostLink(href) && !samePathLink(href)) {
+
+                    history.pushState(null, null, getPathFromUrl(href));
                     e.preventDefault && e.preventDefault();
                     e.stopPropagation && e.stopPropagation();
                     return false;
                 }
             }
+
+            return null;
         });
 
         history.initPushState = function(){};
@@ -241,8 +305,11 @@
         };
     }
     else {
-        history.onchange = function(fn) {
-            listeners.push(fn);
+        history.onBeforeChange = function(fn) {
+            listeners.beforeLocationChange.push(fn);
+        };
+        history.onChange = function(fn) {
+            listeners.locationChange.push(fn);
         };
     }
 
