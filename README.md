@@ -6,7 +6,9 @@ without MetaphorJs:
 
 `history.initPushState()`
 
-`history.onchange(function(location){})`
+`history.onChange(function(location){})`
+
+`history.onBeforeChange(function(location){})`
 
 `history.pushState(state, title, url)` -- state and title are ignored
 
@@ -17,7 +19,9 @@ with MetaphorJs:
 
 `history.initPushState()`
 
-`MetaphorJs.on("locationchange", function(location){})`
+`MetaphorJs.on("beforeLocationChange", function(location){})`
+
+`MetaphorJs.on("locationChange", function(location){})`
 
 `MetaphorJs.pushUrl(url)`
 
