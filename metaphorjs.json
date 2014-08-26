@@ -1,0 +1,16 @@
+{
+    "standalone": {
+        "auto": true,
+        "wrap": true,
+        "target": "dist/metaphorjs.history.js",
+        "files": [
+            "../metaphorjs/src/MetaphorJs.js",
+            "src/metaphorjs.history.js"
+        ]
+    },
+
+    "compile-standalone": {
+        "target": "dist/metaphorjs.history.min.js",
+        "compile": "standalone"
+    }
+}

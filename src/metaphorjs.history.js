@@ -1,4 +1,4 @@
-
+//#require ../../metaphorjs/src/func/event/addListener.js
 
 (function(){
 
@@ -9,13 +9,6 @@
         windowLoaded    = false,
         rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
-        addListener         = function(el, event, func) {
-            if (el.attachEvent) {
-                el.attachEvent('on' + event, func);
-            } else {
-                el.addEventListener(event, func, false);
-            }
-        },
         pushStateSupported  = !!history.pushState,
         hashChangeSupported = "onhashchange" in window;
 
@@ -292,26 +285,22 @@
 
     history.initPushState = init;
 
-    if (window.MetaphorJs) {
+    MetaphorJs.pushUrl  = function(url) {
+        history.pushState(null, null, url);
+    };
+    MetaphorJs.replaceUrl = function(url) {
+        history.replaceState(null, null, url);
+    };
+    MetaphorJs.currentUrl = function(){
+        return getCurrentUrl();
+    };
 
-        MetaphorJs.pushUrl  = function(url) {
-            history.pushState(null, null, url);
-        };
-        MetaphorJs.replaceUrl = function(url) {
-            history.replaceState(null, null, url);
-        };
-        MetaphorJs.currentUrl = function(){
-            return getCurrentUrl();
-        };
-    }
-    else {
-        history.onBeforeChange = function(fn) {
-            listeners.beforeLocationChange.push(fn);
-        };
-        history.onChange = function(fn) {
-            listeners.locationChange.push(fn);
-        };
-    }
+    history.onBeforeChange = function(fn) {
+        listeners.beforeLocationChange.push(fn);
+    };
+    history.onChange = function(fn) {
+        listeners.locationChange.push(fn);
+    };
 
 
 }());
