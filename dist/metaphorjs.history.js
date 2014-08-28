@@ -1,11 +1,13 @@
 (function(){
-"use strict"
+"use strict";
 
-window.MetaphorJs = {
+var MetaphorJs = {
     lib: {}
 };
 
-var addListener = MetaphorJs.addListener = function(el, event, func) {
+
+
+var addListener = function(el, event, func) {
     if (el.attachEvent) {
         el.attachEvent('on' + event, func);
     } else {
@@ -13,7 +15,8 @@ var addListener = MetaphorJs.addListener = function(el, event, func) {
     }
 };
 
-(function(){
+
+var mhistory = function(){
 
     var listeners       = {
             locationChange: [],
@@ -134,16 +137,7 @@ var addListener = MetaphorJs.addListener = function(el, event, func) {
             }
         }
 
-        if (window.MetaphorJs) {
-            if (breakable) {
-                return MetaphorJs.trigger(event, url);
-            }
-            else {
-                MetaphorJs.triggerAsync(event, url);
-            }
-        }
-
-        return null;
+        return MetaphorJs.trigger(event, url);
     };
 
     var init = function() {
@@ -298,16 +292,6 @@ var addListener = MetaphorJs.addListener = function(el, event, func) {
 
     history.initPushState = init;
 
-    MetaphorJs.pushUrl  = function(url) {
-        history.pushState(null, null, url);
-    };
-    MetaphorJs.replaceUrl = function(url) {
-        history.replaceState(null, null, url);
-    };
-    MetaphorJs.currentUrl = function(){
-        return getCurrentUrl();
-    };
-
     history.onBeforeChange = function(fn) {
         listeners.beforeLocationChange.push(fn);
     };
@@ -315,6 +299,19 @@ var addListener = MetaphorJs.addListener = function(el, event, func) {
         listeners.locationChange.push(fn);
     };
 
+    return {
+        pushUrl: function(url) {
+            history.pushState(null, null, url);
+        },
+        replaceUrl: function(url) {
+            history.replaceState(null, null, url);
+        },
+        currentUrl: function() {
+            return getCurrentUrl();
+        }
+    };
+}();
 
-}());
+typeof global != "undefined" ? (global.MetaphorJs = MetaphorJs) : (window.MetaphorJs = MetaphorJs);
+
 }());

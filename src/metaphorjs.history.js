@@ -1,6 +1,8 @@
-//#require ../../metaphorjs/src/func/event/addListener.js
 
-(function(){
+var MetaphorJs = require("../../metaphorjs/src/MetaphorJs.js"),
+    addListener = require("../../metaphorjs/src/func/event/addListener.js");
+
+module.exports = function(){
 
     var listeners       = {
             locationChange: [],
@@ -121,16 +123,7 @@
             }
         }
 
-        if (window.MetaphorJs) {
-            if (breakable) {
-                return MetaphorJs.trigger(event, url);
-            }
-            else {
-                MetaphorJs.triggerAsync(event, url);
-            }
-        }
-
-        return null;
+        return MetaphorJs.trigger(event, url);
     };
 
     var init = function() {
@@ -285,16 +278,6 @@
 
     history.initPushState = init;
 
-    MetaphorJs.pushUrl  = function(url) {
-        history.pushState(null, null, url);
-    };
-    MetaphorJs.replaceUrl = function(url) {
-        history.replaceState(null, null, url);
-    };
-    MetaphorJs.currentUrl = function(){
-        return getCurrentUrl();
-    };
-
     history.onBeforeChange = function(fn) {
         listeners.beforeLocationChange.push(fn);
     };
@@ -302,5 +285,15 @@
         listeners.locationChange.push(fn);
     };
 
-
-}());
+    return {
+        pushUrl: function(url) {
+            history.pushState(null, null, url);
+        },
+        replaceUrl: function(url) {
+            history.replaceState(null, null, url);
+        },
+        currentUrl: function() {
+            return getCurrentUrl();
+        }
+    };
+}();

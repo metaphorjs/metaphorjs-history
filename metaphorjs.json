@@ -2,9 +2,9 @@
     "standalone": {
         "auto": true,
         "wrap": true,
+        "global": true,
         "target": "dist/metaphorjs.history.js",
         "files": [
-            "../metaphorjs/src/MetaphorJs.js",
             "src/metaphorjs.history.js"
         ]
     },
