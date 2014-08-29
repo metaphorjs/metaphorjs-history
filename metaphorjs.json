@@ -5,12 +5,32 @@
         "global": true,
         "target": "dist/metaphorjs.history.js",
         "files": [
-            "src/metaphorjs.history.js"
-        ]
+            ["src/metaphorjs.history.js", {"as": "history"}]
+        ],
+        "expose": ["history"]
+    },
+
+    "amd": {
+        "target": "dist/metaphorjs.history.amd.js",
+        "files": [
+            ["src/metaphorjs.history.js", {"returnExports": true}]
+        ],
+        "omit": [
+            "../metaphorjs-observable/src/metaphorjs.observable.js"
+        ],
+        "define": {
+            "name": "metaphorjs-history",
+            "deps": {"metaphorjs-observable": "Observable"}
+        }
     },
 
     "compile-standalone": {
         "target": "dist/metaphorjs.history.min.js",
         "compile": "standalone"
+    },
+
+    "compile-amd": {
+        "target": "dist/metaphorjs.history.amd.min.js",
+        "compile": "amd"
     }
 }

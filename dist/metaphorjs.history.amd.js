@@ -1,11 +1,232 @@
+define("metaphorjs-history", ['metaphorjs-observable'], function(Observable) {
 
-var addListener = require("../../metaphorjs/src/func/event/addListener.js"),
-    normalizeEvent = require("../../metaphorjs/src/func/event/normalizeEvent.js"),
-    Observable = require("../../metaphorjs-observable/src/metaphorjs.observable.js"),
-    extend = require("../../metaphorjs/src/func/extend.js"),
-    emptyFn = require("../../metaphorjs/src/func/emptyFn.js");
+var addListener = function(el, event, func) {
+    if (el.attachEvent) {
+        el.attachEvent('on' + event, func);
+    } else {
+        el.addEventListener(event, func, false);
+    }
+};
+var returnFalse = function() {
+    return false;
+};
 
-module.exports = function(){
+var returnTrue = function() {
+    return true;
+};
+var strUndef = "undefined";
+
+
+var isUndefined = function(any) {
+    return typeof any == strUndef;
+};
+
+var isNull = function(value) {
+    return value === null;
+};
+
+
+// from jQuery
+
+var NormalizedEvent = function(src) {
+
+    if (src instanceof NormalizedEvent) {
+        return src;
+    }
+
+    // Allow instantiation without the 'new' keyword
+    if (!(this instanceof NormalizedEvent)) {
+        return new NormalizedEvent(src);
+    }
+
+
+    var self    = this;
+
+    for (var i in src) {
+        if (!self[i]) {
+            try {
+                self[i] = src[i];
+            }
+            catch (thrownError){}
+        }
+    }
+
+
+    // Event object
+    self.originalEvent = src;
+    self.type = src.type;
+
+    if (!self.target && src.srcElement) {
+        self.target = src.srcElement;
+    }
+
+
+    var eventDoc, doc, body,
+        button = src.button;
+
+    // Calculate pageX/Y if missing and clientX/Y available
+    if (isUndefined(self.pageX) && !isNull(src.clientX)) {
+        eventDoc = self.target ? self.target.ownerDocument || document : document;
+        doc = eventDoc.documentElement;
+        body = eventDoc.body;
+
+        self.pageX = src.clientX +
+                      ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
+                      ( doc && doc.clientLeft || body && body.clientLeft || 0 );
+        self.pageY = src.clientY +
+                      ( doc && doc.scrollTop  || body && body.scrollTop  || 0 ) -
+                      ( doc && doc.clientTop  || body && body.clientTop  || 0 );
+    }
+
+    // Add which for click: 1 === left; 2 === middle; 3 === right
+    // Note: button is not normalized, so don't use it
+    if ( !self.which && button !== undefined ) {
+        self.which = ( button & 1 ? 1 : ( button & 2 ? 3 : ( button & 4 ? 2 : 0 ) ) );
+    }
+
+    // Events bubbling up the document may have been marked as prevented
+    // by a handler lower down the tree; reflect the correct value.
+    self.isDefaultPrevented = src.defaultPrevented ||
+                              isUndefined(src.defaultPrevented) &&
+                                  // Support: Android<4.0
+                              src.returnValue === false ?
+                              returnTrue :
+                              returnFalse;
+
+
+    // Create a timestamp if incoming event doesn't have one
+    self.timeStamp = src && src.timeStamp || (new Date).getTime();
+};
+
+// Event is based on DOM3 Events as specified by the ECMAScript Language Binding
+// http://www.w3.org/TR/2003/WD-DOM-Level-3-Events-20030331/ecma-script-binding.html
+NormalizedEvent.prototype = {
+
+    isDefaultPrevented: returnFalse,
+    isPropagationStopped: returnFalse,
+    isImmediatePropagationStopped: returnFalse,
+
+    preventDefault: function() {
+        var e = this.originalEvent;
+
+        this.isDefaultPrevented = returnTrue;
+        e.returnValue = false;
+
+        if ( e && e.preventDefault ) {
+            e.preventDefault();
+        }
+    },
+    stopPropagation: function() {
+        var e = this.originalEvent;
+
+        this.isPropagationStopped = returnTrue;
+
+        if ( e && e.stopPropagation ) {
+            e.stopPropagation();
+        }
+    },
+    stopImmediatePropagation: function() {
+        var e = this.originalEvent;
+
+        this.isImmediatePropagationStopped = returnTrue;
+
+        if ( e && e.stopImmediatePropagation ) {
+            e.stopImmediatePropagation();
+        }
+
+        this.stopPropagation();
+    }
+};
+
+
+
+var normalizeEvent = function(originalEvent) {
+    return new NormalizedEvent(originalEvent);
+};
+
+
+var slice = Array.prototype.slice;
+/**
+ * @param {*} obj
+ * @returns {boolean}
+ */
+var isPlainObject = function(obj) {
+    return !!(obj && obj.constructor === Object);
+};
+
+var isBool = function(value) {
+    return typeof value == "boolean";
+};
+
+
+/**
+ * @param {Object} dst
+ * @param {Object} src
+ * @param {Object} src2 ... srcN
+ * @param {boolean} override = false
+ * @param {boolean} deep = false
+ * @returns {*}
+ */
+var extend = function extend() {
+
+
+    var override    = false,
+        deep        = false,
+        args        = slice.call(arguments),
+        dst         = args.shift(),
+        src,
+        k,
+        value;
+
+    if (isBool(args[args.length - 1])) {
+        override    = args.pop();
+    }
+    if (isBool(args[args.length - 1])) {
+        deep        = override;
+        override    = args.pop();
+    }
+
+    while (args.length) {
+        if (src = args.shift()) {
+            for (k in src) {
+
+                if (src.hasOwnProperty(k) && !isUndefined((value = src[k]))) {
+
+                    if (deep) {
+                        if (dst[k] && isPlainObject(dst[k]) && isPlainObject(value)) {
+                            extend(dst[k], value, override, deep);
+                        }
+                        else {
+                            if (override === true || isUndefined(dst[k]) || isNull(dst[k])) {
+                                if (isPlainObject(value)) {
+                                    dst[k] = {};
+                                    extend(dst[k], value, override, true);
+                                }
+                                else {
+                                    dst[k] = value;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        if (override === true || isUndefined(dst[k]) || isNull(dst[k])) {
+                            dst[k] = value;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return dst;
+};
+
+
+
+var emptyFn = function(){};
+
+
+return function(){
 
     var win             = window,
         history         = win.history,
@@ -312,3 +533,5 @@ module.exports = function(){
 
     return exports;
 }();
+
+});
