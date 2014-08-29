@@ -1,0 +1,26 @@
+{
+  "name": "metaphorjs-history",
+  "version": "0.1.0",
+  "authors": [
+    "kuindji <kuindji@gmail.com>"
+  ],
+  "description": "MetaphorJs pushState stateless implementation",
+  "main": "dist/metaphorjs.history.amd.min.js",
+  "moduleType": [
+    "amd"
+  ],
+  "keywords": [
+    "pushState"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/kuindji/metaphorjs-history",
+  "ignore": [
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "metaphorjs-observable": "*"
+  }
+}
