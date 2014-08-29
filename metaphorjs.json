@@ -10,6 +10,19 @@
         "expose": ["history"]
     },
 
+    "npm": {
+        "target": "dist/metaphorjs.history.npm.js",
+        "files": [
+            ["src/metaphorjs.history.js", {"keepExports": true}]
+        ],
+        "require": {
+            "metaphorjs-observable": "Observable"
+        },
+        "omit": [
+            "../metaphorjs-observable/src/metaphorjs.observable.js"
+        ]
+    },
+
     "amd": {
         "target": "dist/metaphorjs.history.amd.js",
         "files": [
