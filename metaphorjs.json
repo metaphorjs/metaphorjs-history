@@ -1,49 +1,63 @@
 {
-    "standalone": {
-        "auto": true,
-        "wrap": true,
-        "global": true,
-        "target": "dist/metaphorjs.history.js",
-        "files": [
-            ["src/metaphorjs.history.js", {"as": "history"}]
-        ],
-        "expose": ["history"]
-    },
-
-    "npm": {
-        "target": "dist/metaphorjs.history.npm.js",
-        "files": [
-            ["src/metaphorjs.history.js", {"keepExports": true}]
-        ],
-        "require": {
-            "metaphorjs-observable": "Observable"
+    "version": "0.1.1",
+    "push": [
+        "github"
+    ],
+    "build": {
+        "standalone": {
+            "auto": true,
+            "wrap": true,
+            "global": true,
+            "target": "dist/metaphorjs.history.js",
+            "files": [
+                [
+                    "src/metaphorjs.history.js",
+                    {
+                        "as": "history"
+                    }
+                ]
+            ],
+            "expose": [
+                "history"
+            ]
         },
-        "omit": [
-            "../metaphorjs-observable/src/metaphorjs.observable.js"
-        ]
-    },
-
-    "amd": {
-        "target": "dist/metaphorjs.history.amd.js",
-        "files": [
-            ["src/metaphorjs.history.js", {"returnExports": true}]
-        ],
-        "omit": [
-            "../metaphorjs-observable/src/metaphorjs.observable.js"
-        ],
-        "define": {
-            "name": "metaphorjs-history",
-            "deps": {"metaphorjs-observable": "Observable"}
+        "npm": {
+            "target": "dist/metaphorjs.history.npm.js",
+            "compile": false,
+            "files": [
+                [
+                    "src/metaphorjs.history.js",
+                    {
+                        "keepExports": true
+                    }
+                ]
+            ],
+            "require": {
+                "metaphorjs-observable": "Observable"
+            },
+            "omit": [
+                "../metaphorjs-observable/src/metaphorjs.observable.js"
+            ]
+        },
+        "amd": {
+            "target": "dist/metaphorjs.history.amd.js",
+            "files": [
+                [
+                    "src/metaphorjs.history.js",
+                    {
+                        "returnExports": true
+                    }
+                ]
+            ],
+            "omit": [
+                "../metaphorjs-observable/src/metaphorjs.observable.js"
+            ],
+            "define": {
+                "name": "metaphorjs-history",
+                "deps": {
+                    "metaphorjs-observable": "Observable"
+                }
+            }
         }
-    },
-
-    "compile-standalone": {
-        "target": "dist/metaphorjs.history.min.js",
-        "compile": "standalone"
-    },
-
-    "compile-amd": {
-        "target": "dist/metaphorjs.history.amd.min.js",
-        "compile": "amd"
     }
 }

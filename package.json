@@ -1,22 +1,22 @@
 {
-  "name": "metaphorjs-history",
-  "version": "0.1.0",
-  "description": "3kb minified",
-  "main": "dist/metaphorjs.history.npm.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kuindji/metaphorjs-history.git"
-  },
-  "author": "kuindji",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/kuindji/metaphorjs-history/issues"
-  },
-  "homepage": "https://github.com/kuindji/metaphorjs-history",
-  "dependencies": {
-      "metaphorjs-observable": "*"
-  }
+    "name": "metaphorjs-history",
+    "version": "0.1.1",
+    "description": "3kb minified",
+    "main": "dist/metaphorjs.history.npm.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/kuindji/metaphorjs-history.git"
+    },
+    "author": "kuindji",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/kuindji/metaphorjs-history/issues"
+    },
+    "homepage": "https://github.com/kuindji/metaphorjs-history",
+    "dependencies": {
+        "metaphorjs-observable": "*"
+    }
 }

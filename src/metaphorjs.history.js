@@ -3,7 +3,8 @@ var addListener = require("../../metaphorjs/src/func/event/addListener.js"),
     normalizeEvent = require("../../metaphorjs/src/func/event/normalizeEvent.js"),
     Observable = require("../../metaphorjs-observable/src/metaphorjs.observable.js"),
     extend = require("../../metaphorjs/src/func/extend.js"),
-    emptyFn = require("../../metaphorjs/src/func/emptyFn.js");
+    emptyFn = require("../../metaphorjs/src/func/emptyFn.js"),
+    attr = require("../../metaphorjs/src/func/dom/attr.js");
 
 module.exports = function(){
 
@@ -264,9 +265,9 @@ module.exports = function(){
 
             if (a) {
 
-                href = a.getAttribute("href");
+                href = attr(a, "href");
 
-                if (href && href.substr(0,1) != "#" && !a.getAttribute("target") &&
+                if (href && href.substr(0,1) != "#" && !attr(a, "target") &&
                     sameHostLink(href) && !samePathLink(href)) {
 
                     history.pushState(null, null, getPathFromUrl(href));
