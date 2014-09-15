@@ -4,7 +4,11 @@ var addListener = require("../../metaphorjs/src/func/event/addListener.js"),
     Observable = require("../../metaphorjs-observable/src/metaphorjs.observable.js"),
     extend = require("../../metaphorjs/src/func/extend.js"),
     emptyFn = require("../../metaphorjs/src/func/emptyFn.js"),
-    attr = require("../../metaphorjs/src/func/dom/attr.js");
+    isFunction = require("../../metaphorjs/src/func/isFunction.js"),
+    isString = require("../../metaphorjs/src/func/isString.js"),
+    getRegExp = require("../../metaphorjs/src/func/getRegExp.js"),
+    getAttr = require("../../metaphorjs/src/func/dom/getAttr.js"),
+    async = require("../../metaphorjs/src/func/async.js");
 
 module.exports = function(){
 
@@ -13,6 +17,7 @@ module.exports = function(){
         location        = win.location,
         observable      = new Observable,
         exports         = {},
+        params          = {},
 
         listeners       = {
             locationChange: [],
@@ -22,7 +27,8 @@ module.exports = function(){
         rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
         pushStateSupported  = !!history.pushState,
-        hashChangeSupported = "onhashchange" in win;
+        hashChangeSupported = "onhashchange" in win,
+        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
 
     extend(exports, observable.getApi());
 
@@ -37,6 +43,14 @@ module.exports = function(){
 
         if (!pushStateSupported) {
             url = encodeURIComponent(url);
+        }
+
+        if (url.substr(0, 1) == "?") {
+            url = location.pathname + url;
+        }
+
+        if (useHash) {
+            url = url.replace("?", "#");
         }
 
         return url;
@@ -65,11 +79,12 @@ module.exports = function(){
 
         url = "" + url;
 
+        // 0 - full url, 1 - protocol, 2 - host, 3 - port, 4 - path, 5 - search, 6 - hash
         var matches = url.match(rURL),
             path,
             hash;
 
-        if (!pushStateSupported) {
+        if (!pushStateSupported || useHash) {
             hash    = matches[6];
             if (hash.substr(0,1) == "!") {
                 path    = hash.substr(1);
@@ -80,7 +95,7 @@ module.exports = function(){
             path    = matches[4];
 
             if (matches[5]) {
-                path    += "?" + matches[5];
+                path    += matches[5];
             }
         }
 
@@ -104,7 +119,7 @@ module.exports = function(){
         var loc;
 
         if (pushStateSupported) {
-            loc = location.pathname + location.search;
+            loc = location.pathname + location.search + location.hash;
         }
         else {
             loc = location.hash.substr(1);
@@ -121,6 +136,37 @@ module.exports = function(){
         }
 
         return loc;
+    };
+
+    var getParam = function(name, url){
+        var ex = params[name].extractor;
+        if (isFunction(ex)) {
+            return ex(url, name);
+        }
+        else {
+            var match = url.match(ex);
+            return match ? match.pop() : null;
+        }
+    };
+
+    var checkParamChange = function(url){
+        var i,
+            prev, val;
+
+        for (i in params) {
+            prev    = params[i].value;
+            val     = getParam(i, url);
+            params[i].value = val;
+            if (val != prev) {
+                exports.trigger("change-" + i, val, prev, i, url);
+            }
+        }
+    };
+
+    var onLocationChange = function(){
+        var url = getCurrentUrl();
+        triggerEvent("locationChange", false, url);
+        checkParamChange(url);
     };
 
     var triggerEvent = function triggerEvent(event, breakable, data) {
@@ -146,16 +192,14 @@ module.exports = function(){
             history.origPushState       = history.pushState;
             history.origReplaceState    = history.replaceState;
 
-            addListener(win, "popstate", function(){
-                triggerEvent("locationChange");
-            });
+            addListener(win, "popstate", onLocationChange);
 
             history.pushState = function(state, title, url) {
                 if (triggerEvent("beforeLocationChange", true, url) === false) {
                     return false;
                 }
                 history.origPushState(state, title, preparePath(url));
-                triggerEvent("locationChange");
+                onLocationChange();
             };
 
             history.replaceState = function(state, title, url) {
@@ -163,7 +207,7 @@ module.exports = function(){
                     return false;
                 }
                 history.origReplaceState(state, title, preparePath(url));
-                triggerEvent("locationChange");
+                onLocationChange();
             };
         }
         else {
@@ -175,11 +219,9 @@ module.exports = function(){
                     if (triggerEvent("beforeLocationChange", true, url) === false) {
                         return false;
                     }
-                    setHash(preparePath(url));
+                    async(setHash, null, [preparePath(url)]);
                 };
-                addListener(win, "hashchange", function(){
-                    triggerEvent("locationChange");
-                });
+                addListener(win, "hashchange", onLocationChange);
             }
             // iframe
             else {
@@ -196,8 +238,10 @@ module.exports = function(){
 
                 win.onIframeHistoryChange = function(val) {
                     if (!initialUpdate) {
-                        setHash(val);
-                        triggerEvent("locationChange");
+                        async(function(){
+                            setHash(val);
+                            onLocationChange();
+                        });
                     }
                 };
 
@@ -265,9 +309,9 @@ module.exports = function(){
 
             if (a) {
 
-                href = attr(a, "href");
+                href = getAttr(a, "href");
 
-                if (href && href.substr(0,1) != "#" && !attr(a, "target") &&
+                if (href && href.substr(0,1) != "#" && !getAttr(a, "target") &&
                     sameHostLink(href) && !samePathLink(href)) {
 
                     history.pushState(null, null, getPathFromUrl(href));
@@ -309,6 +353,28 @@ module.exports = function(){
     };
     exports.initPushState = function() {
         return init();
+    };
+
+    exports.getParam = function(name){
+        return params[name] ? params[name].value : null;
+    };
+
+    exports.addParam = function(name, extractor) {
+        if (!params[name]) {
+            if (!extractor) {
+                extractor = getRegExp(name + "=([^&]+)")
+            }
+            else if (!isFunction(extractor)) {
+                extractor = isString(extractor) ? getRegExp(extractor) : extractor;
+            }
+
+            params[name] = {
+                name: name,
+                value: null,
+                extractor: extractor
+            };
+            params[name].value = getParam(name, getCurrentUrl());
+        }
     };
 
     return exports;

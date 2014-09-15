@@ -278,21 +278,37 @@ var extend = function(){
 }();
 
 var emptyFn = function(){};
+var isFunction = function(value) {
+    return typeof value == 'function';
+};
 
 
-var attr = function(el, name, value) {
-    if (!el || !el.getAttribute) {
-        return null;
-    }
-    if (value === undf) {
-        return el.getAttribute(name);
-    }
-    else if (value === null) {
-        return el.removeAttribute(name);
-    }
-    else {
-        return el.setAttribute(name, value);
-    }
+var isString = function(value) {
+    return typeof value == "string" || value === ""+value;
+    //return typeof value == "string" || varType(value) === 0;
+};/**
+ * @param {String} expr
+ */
+var getRegExp = function(){
+
+    var cache = {};
+
+    return function(expr) {
+        return cache[expr] || (cache[expr] = new RegExp(expr));
+    };
+}();
+var getAttr = function(el, name) {
+    return el.getAttribute(name);
+};/**
+ * @param {Function} fn
+ * @param {Object} context
+ * @param {[]} args
+ * @param {number} timeout
+ */
+var async = function(fn, context, args, timeout) {
+    setTimeout(function(){
+        fn.apply(context, args || []);
+    }, timeout || 0);
 };
 
 
@@ -303,6 +319,7 @@ return function(){
         location        = win.location,
         observable      = new Observable,
         exports         = {},
+        params          = {},
 
         listeners       = {
             locationChange: [],
@@ -312,7 +329,8 @@ return function(){
         rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
         pushStateSupported  = !!history.pushState,
-        hashChangeSupported = "onhashchange" in win;
+        hashChangeSupported = "onhashchange" in win,
+        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
 
     extend(exports, observable.getApi());
 
@@ -327,6 +345,14 @@ return function(){
 
         if (!pushStateSupported) {
             url = encodeURIComponent(url);
+        }
+
+        if (url.substr(0, 1) == "?") {
+            url = location.pathname + url;
+        }
+
+        if (useHash) {
+            url = url.replace("?", "#");
         }
 
         return url;
@@ -355,11 +381,12 @@ return function(){
 
         url = "" + url;
 
+        // 0 - full url, 1 - protocol, 2 - host, 3 - port, 4 - path, 5 - search, 6 - hash
         var matches = url.match(rURL),
             path,
             hash;
 
-        if (!pushStateSupported) {
+        if (!pushStateSupported || useHash) {
             hash    = matches[6];
             if (hash.substr(0,1) == "!") {
                 path    = hash.substr(1);
@@ -370,7 +397,7 @@ return function(){
             path    = matches[4];
 
             if (matches[5]) {
-                path    += "?" + matches[5];
+                path    += matches[5];
             }
         }
 
@@ -394,7 +421,7 @@ return function(){
         var loc;
 
         if (pushStateSupported) {
-            loc = location.pathname + location.search;
+            loc = location.pathname + location.search + location.hash;
         }
         else {
             loc = location.hash.substr(1);
@@ -411,6 +438,37 @@ return function(){
         }
 
         return loc;
+    };
+
+    var getParam = function(name, url){
+        var ex = params[name].extractor;
+        if (isFunction(ex)) {
+            return ex(url, name);
+        }
+        else {
+            var match = url.match(ex);
+            return match ? match.pop() : null;
+        }
+    };
+
+    var checkParamChange = function(url){
+        var i,
+            prev, val;
+
+        for (i in params) {
+            prev    = params[i].value;
+            val     = getParam(i, url);
+            params[i].value = val;
+            if (val != prev) {
+                exports.trigger("change-" + i, val, prev, i, url);
+            }
+        }
+    };
+
+    var onLocationChange = function(){
+        var url = getCurrentUrl();
+        triggerEvent("locationChange", false, url);
+        checkParamChange(url);
     };
 
     var triggerEvent = function triggerEvent(event, breakable, data) {
@@ -436,16 +494,14 @@ return function(){
             history.origPushState       = history.pushState;
             history.origReplaceState    = history.replaceState;
 
-            addListener(win, "popstate", function(){
-                triggerEvent("locationChange");
-            });
+            addListener(win, "popstate", onLocationChange);
 
             history.pushState = function(state, title, url) {
                 if (triggerEvent("beforeLocationChange", true, url) === false) {
                     return false;
                 }
                 history.origPushState(state, title, preparePath(url));
-                triggerEvent("locationChange");
+                onLocationChange();
             };
 
             history.replaceState = function(state, title, url) {
@@ -453,7 +509,7 @@ return function(){
                     return false;
                 }
                 history.origReplaceState(state, title, preparePath(url));
-                triggerEvent("locationChange");
+                onLocationChange();
             };
         }
         else {
@@ -465,11 +521,9 @@ return function(){
                     if (triggerEvent("beforeLocationChange", true, url) === false) {
                         return false;
                     }
-                    setHash(preparePath(url));
+                    async(setHash, null, [preparePath(url)]);
                 };
-                addListener(win, "hashchange", function(){
-                    triggerEvent("locationChange");
-                });
+                addListener(win, "hashchange", onLocationChange);
             }
             // iframe
             else {
@@ -486,8 +540,10 @@ return function(){
 
                 win.onIframeHistoryChange = function(val) {
                     if (!initialUpdate) {
-                        setHash(val);
-                        triggerEvent("locationChange");
+                        async(function(){
+                            setHash(val);
+                            onLocationChange();
+                        });
                     }
                 };
 
@@ -555,9 +611,9 @@ return function(){
 
             if (a) {
 
-                href = attr(a, "href");
+                href = getAttr(a, "href");
 
-                if (href && href.substr(0,1) != "#" && !attr(a, "target") &&
+                if (href && href.substr(0,1) != "#" && !getAttr(a, "target") &&
                     sameHostLink(href) && !samePathLink(href)) {
 
                     history.pushState(null, null, getPathFromUrl(href));
@@ -599,6 +655,28 @@ return function(){
     };
     exports.initPushState = function() {
         return init();
+    };
+
+    exports.getParam = function(name){
+        return params[name] ? params[name].value : null;
+    };
+
+    exports.addParam = function(name, extractor) {
+        if (!params[name]) {
+            if (!extractor) {
+                extractor = getRegExp(name + "=([^&]+)")
+            }
+            else if (!isFunction(extractor)) {
+                extractor = isString(extractor) ? getRegExp(extractor) : extractor;
+            }
+
+            params[name] = {
+                name: name,
+                value: null,
+                extractor: extractor
+            };
+            params[name].value = getParam(name, getCurrentUrl());
+        }
     };
 
     return exports;
