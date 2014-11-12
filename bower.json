@@ -13,7 +13,7 @@
         "pushState"
     ],
     "license": "MIT",
-    "homepage": "https://github.com/kuindji/metaphorjs-history",
+    "homepage": "https://github.com/metaphorjs/metaphorjs-history",
     "ignore": [
         "node_modules",
         "bower_components",

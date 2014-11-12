@@ -337,12 +337,12 @@ function async(fn, context, args, timeout) {
         fn.apply(context, args || []);
     }, timeout || 0);
 };
-var history, mhistory;
+var mhistory, history;
 
 
 
 
-history = mhistory = function(){
+mhistory = history = function(){
 
     var win,
         history,

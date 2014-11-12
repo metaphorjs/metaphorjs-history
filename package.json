@@ -1,21 +1,21 @@
 {
     "name": "metaphorjs-history",
     "version": "0.1.2",
-    "description": "3kb minified",
+    "description": "MetaphorJs pushState stateless implementation",
     "main": "dist/metaphorjs.history.npm.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/kuindji/metaphorjs-history.git"
+        "url": "https://github.com/metaphorjs/metaphorjs-history.git"
     },
     "author": "kuindji",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/kuindji/metaphorjs-history/issues"
+        "url": "https://github.com/metaphorjs/metaphorjs-history/issues"
     },
-    "homepage": "https://github.com/kuindji/metaphorjs-history",
+    "homepage": "https://github.com/metaphorjs/metaphorjs-history",
     "dependencies": {
         "metaphorjs-observable": "*"
     }

@@ -1063,11 +1063,12 @@ function async(fn, context, args, timeout) {
         fn.apply(context, args || []);
     }, timeout || 0);
 };
+var mhistory, history;
 
 
 
 
-var history = function(){
+mhistory = history = function(){
 
     var win,
         history,
