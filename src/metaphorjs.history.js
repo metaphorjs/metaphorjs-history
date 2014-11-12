@@ -1,4 +1,5 @@
 
+
 var addListener = require("../../metaphorjs/src/func/event/addListener.js"),
     normalizeEvent = require("../../metaphorjs/src/func/event/normalizeEvent.js"),
     Observable = require("../../metaphorjs-observable/src/metaphorjs.observable.js"),
@@ -12,25 +13,33 @@ var addListener = require("../../metaphorjs/src/func/event/addListener.js"),
 
 module.exports = function(){
 
-    var win             = window,
-        history         = win.history,
-        location        = win.location,
+    var win,
+        history,
+        location,
         observable      = new Observable,
-        exports         = {},
+        api             = {},
         params          = {},
 
-        listeners       = {
-            locationChange: [],
-            beforeLocationChange: []
-        },
-        windowLoaded    = false,
+        pushState,
+        replaceState,
+
+        windowLoaded    = typeof window == "undefined",
         rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
-        pushStateSupported  = !!history.pushState,
-        hashChangeSupported = "onhashchange" in win,
-        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+        pushStateSupported,
+        hashChangeSupported,
+        useHash;
 
-    extend(exports, observable.getApi());
+    observable.createEvent("beforeLocationChange", false);
+
+    var initWindow = function() {
+        win                 = window;
+        history             = win.history;
+        location            = win.location;
+        pushStateSupported  = !!history.pushState;
+        hashChangeSupported = "onhashchange" in win;
+        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+    };
 
     var preparePath = function(url) {
 
@@ -158,33 +167,25 @@ module.exports = function(){
             val     = getParam(i, url);
             params[i].value = val;
             if (val != prev) {
-                exports.trigger("change-" + i, val, prev, i, url);
+                observable.trigger("change-" + i, val, prev, i, url);
             }
         }
     };
 
     var onLocationChange = function(){
         var url = getCurrentUrl();
-        triggerEvent("locationChange", false, url);
+        triggerEvent("locationChange", url);
         checkParamChange(url);
     };
 
-    var triggerEvent = function triggerEvent(event, breakable, data) {
-
-        var url = data || getCurrentUrl(),
-            res;
-
-        for (var i = -1, l = listeners[event].length; ++i < l;){
-            res = listeners[event][i].call(null, url);
-            if (breakable && res === false) {
-                return false;
-            }
-        }
-
-        return exports.trigger(event, url);
+    var triggerEvent = function triggerEvent(event, data) {
+        var url = data || getCurrentUrl();
+        return observable.trigger(event, url);
     };
 
     var init = function() {
+
+        initWindow();
 
         // normal pushState
         if (pushStateSupported) {
@@ -194,19 +195,20 @@ module.exports = function(){
 
             addListener(win, "popstate", onLocationChange);
 
-            history.pushState = function(state, title, url) {
-                if (triggerEvent("beforeLocationChange", true, url) === false) {
+            pushState = function(url) {
+                if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origPushState(state, title, preparePath(url));
+                history.origPushState(null, null, preparePath(url));
                 onLocationChange();
             };
 
-            history.replaceState = function(state, title, url) {
-                if (triggerEvent("beforeLocationChange", true, url) === false) {
+
+            replaceState = function(url) {
+                if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origReplaceState(state, title, preparePath(url));
+                history.origReplaceState(null, null, preparePath(url));
                 onLocationChange();
             };
         }
@@ -215,12 +217,13 @@ module.exports = function(){
             // onhashchange
             if (hashChangeSupported) {
 
-                history.replaceState = history.pushState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                replaceState = pushState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     async(setHash, null, [preparePath(url)]);
                 };
+
                 addListener(win, "hashchange", onLocationChange);
             }
             // iframe
@@ -230,10 +233,10 @@ module.exports = function(){
                     initialUpdate = false;
 
                 var createFrame = function() {
-                    frame   = document.createElement("iframe");
+                    frame   = window.document.createElement("iframe");
                     frame.src = 'about:blank';
                     frame.style.display = 'none';
-                    document.body.appendChild(frame);
+                    window.document.body.appendChild(frame);
                 };
 
                 win.onIframeHistoryChange = function(val) {
@@ -264,15 +267,15 @@ module.exports = function(){
                 };
 
 
-                history.pushState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                pushState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
-                history.replaceState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                replaceState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     replaceFrame(preparePath(url));
@@ -296,7 +299,7 @@ module.exports = function(){
 
 
 
-        addListener(document.documentElement, "click", function(e) {
+        addListener(window.document.documentElement, "click", function(e) {
 
             e = normalizeEvent(e || win.event);
 
@@ -325,57 +328,69 @@ module.exports = function(){
             return null;
         });
 
-        history.initPushState = emptyFn;
-        exports.initPushState = emptyFn;
+        init = emptyFn;
     };
 
-    addListener(win, "load", function() {
+
+    addListener(window, "load", function() {
         windowLoaded = true;
     });
 
-    history.initPushState = init;
 
-    history.onBeforeChange = function(fn) {
-        listeners.beforeLocationChange.push(fn);
-    };
-    history.onChange = function(fn) {
-        listeners.locationChange.push(fn);
-    };
+    return extend(api, observable.getApi(), {
 
-    exports.pushUrl = function(url) {
-        history.pushState(null, null, url);
-    };
-    exports.replaceUrl = function(url) {
-        history.replaceState(null, null, url);
-    };
-    exports.currentUrl = function() {
-        return getCurrentUrl();
-    };
-    exports.initPushState = function() {
-        return init();
-    };
+        push: function(url) {
+            init();
+            history.pushState(null, null, url);
+        },
 
-    exports.getParam = function(name){
-        return params[name] ? params[name].value : null;
-    };
+        replace: function(url) {
+            init();
+            history.replaceState(null, null, url);
+        },
 
-    exports.addParam = function(name, extractor) {
-        if (!params[name]) {
-            if (!extractor) {
-                extractor = getRegExp(name + "=([^&]+)")
-            }
-            else if (!isFunction(extractor)) {
-                extractor = isString(extractor) ? getRegExp(extractor) : extractor;
-            }
+        current: function() {
+            init();
+            return getCurrentUrl();
+        },
 
-            params[name] = {
-                name: name,
-                value: null,
-                extractor: extractor
+        init: function() {
+            return init();
+        },
+
+        polyfill: function() {
+            init();
+            window.history.pushState = function(state, title, url) {
+                pushState(url);
             };
-            params[name].value = getParam(name, getCurrentUrl());
-        }
-    };
+            window.history.replaceState = function(state, title, url) {
+                replaceState(url);
+            };
+        },
 
-    return exports;
+        getParam: function(name){
+            return params[name] ? params[name].value : null;
+        },
+
+        addParam: function(name, extractor) {
+            init();
+            if (!params[name]) {
+                if (!extractor) {
+                    extractor = getRegExp(name + "=([^&]+)")
+                }
+                else if (!isFunction(extractor)) {
+                    extractor = isString(extractor) ? getRegExp(extractor) : extractor;
+                }
+
+                params[name] = {
+                    name: name,
+                    value: null,
+                    extractor: extractor
+                };
+                params[name].value = getParam(name, getCurrentUrl());
+            }
+        }
+
+    });
+
 }();

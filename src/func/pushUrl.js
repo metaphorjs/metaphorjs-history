@@ -1,4 +1,4 @@
 
-var history = require("../metaphorjs.history.js");
+var mhistory = require("../metaphorjs.history.js");
 
-module.exports = history.pushUrl;
+module.exports = mhistory.push;

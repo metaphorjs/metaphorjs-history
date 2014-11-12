@@ -1,146 +1,33 @@
 define("metaphorjs-history", ['metaphorjs-observable'], function(Observable) {
 
-var addListener = function(el, event, func) {
+function addListener(el, event, func) {
     if (el.attachEvent) {
         el.attachEvent('on' + event, func);
     } else {
         el.addEventListener(event, func, false);
     }
 };
-var returnFalse = function() {
+
+function returnFalse() {
     return false;
 };
 
-var returnTrue = function() {
+
+function returnTrue() {
     return true;
 };
+
 var undf = undefined;
-var isNull = function(value) {
+
+function isNull(value) {
     return value === null;
 };
 
 
-// from jQuery
-
-var NormalizedEvent = function(src) {
-
-    if (src instanceof NormalizedEvent) {
-        return src;
-    }
-
-    // Allow instantiation without the 'new' keyword
-    if (!(this instanceof NormalizedEvent)) {
-        return new NormalizedEvent(src);
-    }
-
-
-    var self    = this;
-
-    for (var i in src) {
-        if (!self[i]) {
-            try {
-                self[i] = src[i];
-            }
-            catch (thrownError){}
-        }
-    }
-
-
-    // Event object
-    self.originalEvent = src;
-    self.type = src.type;
-
-    if (!self.target && src.srcElement) {
-        self.target = src.srcElement;
-    }
-
-
-    var eventDoc, doc, body,
-        button = src.button;
-
-    // Calculate pageX/Y if missing and clientX/Y available
-    if (self.pageX === undf && !isNull(src.clientX)) {
-        eventDoc = self.target ? self.target.ownerDocument || document : document;
-        doc = eventDoc.documentElement;
-        body = eventDoc.body;
-
-        self.pageX = src.clientX +
-                      ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
-                      ( doc && doc.clientLeft || body && body.clientLeft || 0 );
-        self.pageY = src.clientY +
-                      ( doc && doc.scrollTop  || body && body.scrollTop  || 0 ) -
-                      ( doc && doc.clientTop  || body && body.clientTop  || 0 );
-    }
-
-    // Add which for click: 1 === left; 2 === middle; 3 === right
-    // Note: button is not normalized, so don't use it
-    if ( !self.which && button !== undf ) {
-        self.which = ( button & 1 ? 1 : ( button & 2 ? 3 : ( button & 4 ? 2 : 0 ) ) );
-    }
-
-    // Events bubbling up the document may have been marked as prevented
-    // by a handler lower down the tree; reflect the correct value.
-    self.isDefaultPrevented = src.defaultPrevented ||
-                              src.defaultPrevented === undf &&
-                                  // Support: Android<4.0
-                              src.returnValue === false ?
-                              returnTrue :
-                              returnFalse;
-
-
-    // Create a timestamp if incoming event doesn't have one
-    self.timeStamp = src && src.timeStamp || (new Date).getTime();
-};
-
-// Event is based on DOM3 Events as specified by the ECMAScript Language Binding
-// http://www.w3.org/TR/2003/WD-DOM-Level-3-Events-20030331/ecma-script-binding.html
-NormalizedEvent.prototype = {
-
-    isDefaultPrevented: returnFalse,
-    isPropagationStopped: returnFalse,
-    isImmediatePropagationStopped: returnFalse,
-
-    preventDefault: function() {
-        var e = this.originalEvent;
-
-        this.isDefaultPrevented = returnTrue;
-        e.returnValue = false;
-
-        if ( e && e.preventDefault ) {
-            e.preventDefault();
-        }
-    },
-    stopPropagation: function() {
-        var e = this.originalEvent;
-
-        this.isPropagationStopped = returnTrue;
-
-        if ( e && e.stopPropagation ) {
-            e.stopPropagation();
-        }
-    },
-    stopImmediatePropagation: function() {
-        var e = this.originalEvent;
-
-        this.isImmediatePropagationStopped = returnTrue;
-
-        if ( e && e.stopImmediatePropagation ) {
-            e.stopImmediatePropagation();
-        }
-
-        this.stopPropagation();
-    }
-};
-
-
-
-var normalizeEvent = function(originalEvent) {
-    return new NormalizedEvent(originalEvent);
-};
-
-
 var slice = Array.prototype.slice;
+
 var toString = Object.prototype.toString;
+
 
 
 
@@ -159,20 +46,22 @@ var varType = function(){
 
 
     /**
-        'string': 0,
-        'number': 1,
-        'boolean': 2,
-        'object': 3,
-        'function': 4,
-        'array': 5,
-        'null': 6,
-        'undefined': 7,
-        'NaN': 8,
-        'regexp': 9,
-        'date': 10
-    */
-
-    return function(val) {
+     * 'string': 0,
+     * 'number': 1,
+     * 'boolean': 2,
+     * 'object': 3,
+     * 'function': 4,
+     * 'array': 5,
+     * 'null': 6,
+     * 'undefined': 7,
+     * 'NaN': 8,
+     * 'regexp': 9,
+     * 'date': 10,
+     * unknown: -1
+     * @param {*} value
+     * @returns {number}
+     */
+    return function varType(val) {
 
         if (!val) {
             if (val === null) {
@@ -199,27 +88,33 @@ var varType = function(){
 }();
 
 
-var isPlainObject = function(value) {
+
+function isPlainObject(value) {
     // IE < 9 returns [object Object] from toString(htmlElement)
-    return typeof value == "object" && varType(value) === 3 && !value.nodeType;
+    return typeof value == "object" &&
+           varType(value) === 3 &&
+            !value.nodeType &&
+            value.constructor === Object;
+
 };
 
-
-var isBool = function(value) {
+function isBool(value) {
     return value === true || value === false;
 };
 
 
-/**
- * @param {Object} dst
- * @param {Object} src
- * @param {Object} src2 ... srcN
- * @param {boolean} override = false
- * @param {boolean} deep = false
- * @returns {*}
- */
+
+
 var extend = function(){
 
+    /**
+     * @param {Object} dst
+     * @param {Object} src
+     * @param {Object} src2 ... srcN
+     * @param {boolean} override = false
+     * @param {boolean} deep = false
+     * @returns {object}
+     */
     var extend = function extend() {
 
 
@@ -277,62 +172,202 @@ var extend = function(){
     return extend;
 }();
 
-var emptyFn = function(){};
-var isFunction = function(value) {
+
+
+// from jQuery
+
+var DomEvent = function(src) {
+
+    if (src instanceof DomEvent) {
+        return src;
+    }
+
+    // Allow instantiation without the 'new' keyword
+    if (!(this instanceof DomEvent)) {
+        return new DomEvent(src);
+    }
+
+
+    var self    = this;
+
+    for (var i in src) {
+        if (!self[i]) {
+            try {
+                self[i] = src[i];
+            }
+            catch (thrownError){}
+        }
+    }
+
+
+    // Event object
+    self.originalEvent = src;
+    self.type = src.type;
+
+    if (!self.target && src.srcElement) {
+        self.target = src.srcElement;
+    }
+
+
+    var eventDoc, doc, body,
+        button = src.button;
+
+    // Calculate pageX/Y if missing and clientX/Y available
+    if (self.pageX === undf && !isNull(src.clientX)) {
+        eventDoc = self.target ? self.target.ownerDocument || window.document : window.document;
+        doc = eventDoc.documentElement;
+        body = eventDoc.body;
+
+        self.pageX = src.clientX +
+                      ( doc && doc.scrollLeft || body && body.scrollLeft || 0 ) -
+                      ( doc && doc.clientLeft || body && body.clientLeft || 0 );
+        self.pageY = src.clientY +
+                      ( doc && doc.scrollTop  || body && body.scrollTop  || 0 ) -
+                      ( doc && doc.clientTop  || body && body.clientTop  || 0 );
+    }
+
+    // Add which for click: 1 === left; 2 === middle; 3 === right
+    // Note: button is not normalized, so don't use it
+    if ( !self.which && button !== undf ) {
+        self.which = ( button & 1 ? 1 : ( button & 2 ? 3 : ( button & 4 ? 2 : 0 ) ) );
+    }
+
+    // Events bubbling up the document may have been marked as prevented
+    // by a handler lower down the tree; reflect the correct value.
+    self.isDefaultPrevented = src.defaultPrevented ||
+                              src.defaultPrevented === undf &&
+                                  // Support: Android<4.0
+                              src.returnValue === false ?
+                              returnTrue :
+                              returnFalse;
+
+
+    // Create a timestamp if incoming event doesn't have one
+    self.timeStamp = src && src.timeStamp || (new Date).getTime();
+};
+
+// Event is based on DOM3 Events as specified by the ECMAScript Language Binding
+// http://www.w3.org/TR/2003/WD-DOM-Level-3-Events-20030331/ecma-script-binding.html
+extend(DomEvent.prototype, {
+
+    isDefaultPrevented: returnFalse,
+    isPropagationStopped: returnFalse,
+    isImmediatePropagationStopped: returnFalse,
+
+    preventDefault: function() {
+        var e = this.originalEvent;
+
+        this.isDefaultPrevented = returnTrue;
+        e.returnValue = false;
+
+        if ( e && e.preventDefault ) {
+            e.preventDefault();
+        }
+    },
+    stopPropagation: function() {
+        var e = this.originalEvent;
+
+        this.isPropagationStopped = returnTrue;
+
+        if ( e && e.stopPropagation ) {
+            e.stopPropagation();
+        }
+    },
+    stopImmediatePropagation: function() {
+        var e = this.originalEvent;
+
+        this.isImmediatePropagationStopped = returnTrue;
+
+        if ( e && e.stopImmediatePropagation ) {
+            e.stopImmediatePropagation();
+        }
+
+        this.stopPropagation();
+    }
+}, true, false);
+
+
+
+
+function normalizeEvent(originalEvent) {
+    return new DomEvent(originalEvent);
+};
+
+
+
+function emptyFn(){};
+
+function isFunction(value) {
     return typeof value == 'function';
 };
 
 
-var isString = function(value) {
+
+function isString(value) {
     return typeof value == "string" || value === ""+value;
     //return typeof value == "string" || varType(value) === 0;
-};/**
- * @param {String} expr
- */
+};
+
 var getRegExp = function(){
 
     var cache = {};
 
-    return function(expr) {
+    /**
+     * @param {String} expr
+     * @returns RegExp
+     */
+    return function getRegExp(expr) {
         return cache[expr] || (cache[expr] = new RegExp(expr));
     };
 }();
-var getAttr = function(el, name) {
-    return el.getAttribute(name);
-};/**
+
+function getAttr(el, name) {
+    return el.getAttribute ? el.getAttribute(name) : null;
+};
+/**
  * @param {Function} fn
  * @param {Object} context
  * @param {[]} args
  * @param {number} timeout
  */
-var async = function(fn, context, args, timeout) {
+function async(fn, context, args, timeout) {
     setTimeout(function(){
         fn.apply(context, args || []);
     }, timeout || 0);
 };
 
 
+
+
 return function(){
 
-    var win             = window,
-        history         = win.history,
-        location        = win.location,
+    var win,
+        history,
+        location,
         observable      = new Observable,
-        exports         = {},
+        api             = {},
         params          = {},
 
-        listeners       = {
-            locationChange: [],
-            beforeLocationChange: []
-        },
-        windowLoaded    = false,
+        pushState,
+        replaceState,
+
+        windowLoaded    = typeof window == "undefined",
         rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
-        pushStateSupported  = !!history.pushState,
-        hashChangeSupported = "onhashchange" in win,
-        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+        pushStateSupported,
+        hashChangeSupported,
+        useHash;
 
-    extend(exports, observable.getApi());
+    observable.createEvent("beforeLocationChange", false);
+
+    var initWindow = function() {
+        win                 = window;
+        history             = win.history;
+        location            = win.location;
+        pushStateSupported  = !!history.pushState;
+        hashChangeSupported = "onhashchange" in win;
+        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+    };
 
     var preparePath = function(url) {
 
@@ -460,33 +495,25 @@ return function(){
             val     = getParam(i, url);
             params[i].value = val;
             if (val != prev) {
-                exports.trigger("change-" + i, val, prev, i, url);
+                observable.trigger("change-" + i, val, prev, i, url);
             }
         }
     };
 
     var onLocationChange = function(){
         var url = getCurrentUrl();
-        triggerEvent("locationChange", false, url);
+        triggerEvent("locationChange", url);
         checkParamChange(url);
     };
 
-    var triggerEvent = function triggerEvent(event, breakable, data) {
-
-        var url = data || getCurrentUrl(),
-            res;
-
-        for (var i = -1, l = listeners[event].length; ++i < l;){
-            res = listeners[event][i].call(null, url);
-            if (breakable && res === false) {
-                return false;
-            }
-        }
-
-        return exports.trigger(event, url);
+    var triggerEvent = function triggerEvent(event, data) {
+        var url = data || getCurrentUrl();
+        return observable.trigger(event, url);
     };
 
     var init = function() {
+
+        initWindow();
 
         // normal pushState
         if (pushStateSupported) {
@@ -496,19 +523,20 @@ return function(){
 
             addListener(win, "popstate", onLocationChange);
 
-            history.pushState = function(state, title, url) {
-                if (triggerEvent("beforeLocationChange", true, url) === false) {
+            pushState = function(url) {
+                if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origPushState(state, title, preparePath(url));
+                history.origPushState(null, null, preparePath(url));
                 onLocationChange();
             };
 
-            history.replaceState = function(state, title, url) {
-                if (triggerEvent("beforeLocationChange", true, url) === false) {
+
+            replaceState = function(url) {
+                if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origReplaceState(state, title, preparePath(url));
+                history.origReplaceState(null, null, preparePath(url));
                 onLocationChange();
             };
         }
@@ -517,12 +545,13 @@ return function(){
             // onhashchange
             if (hashChangeSupported) {
 
-                history.replaceState = history.pushState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                replaceState = pushState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     async(setHash, null, [preparePath(url)]);
                 };
+
                 addListener(win, "hashchange", onLocationChange);
             }
             // iframe
@@ -532,10 +561,10 @@ return function(){
                     initialUpdate = false;
 
                 var createFrame = function() {
-                    frame   = document.createElement("iframe");
+                    frame   = window.document.createElement("iframe");
                     frame.src = 'about:blank';
                     frame.style.display = 'none';
-                    document.body.appendChild(frame);
+                    window.document.body.appendChild(frame);
                 };
 
                 win.onIframeHistoryChange = function(val) {
@@ -566,15 +595,15 @@ return function(){
                 };
 
 
-                history.pushState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                pushState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
-                history.replaceState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                replaceState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     replaceFrame(preparePath(url));
@@ -598,7 +627,7 @@ return function(){
 
 
 
-        addListener(document.documentElement, "click", function(e) {
+        addListener(window.document.documentElement, "click", function(e) {
 
             e = normalizeEvent(e || win.event);
 
@@ -627,59 +656,73 @@ return function(){
             return null;
         });
 
-        history.initPushState = emptyFn;
-        exports.initPushState = emptyFn;
+        init = emptyFn;
     };
 
-    addListener(win, "load", function() {
+
+    addListener(window, "load", function() {
         windowLoaded = true;
     });
 
-    history.initPushState = init;
 
-    history.onBeforeChange = function(fn) {
-        listeners.beforeLocationChange.push(fn);
-    };
-    history.onChange = function(fn) {
-        listeners.locationChange.push(fn);
-    };
+    return extend(api, observable.getApi(), {
 
-    exports.pushUrl = function(url) {
-        history.pushState(null, null, url);
-    };
-    exports.replaceUrl = function(url) {
-        history.replaceState(null, null, url);
-    };
-    exports.currentUrl = function() {
-        return getCurrentUrl();
-    };
-    exports.initPushState = function() {
-        return init();
-    };
+        push: function(url) {
+            init();
+            history.pushState(null, null, url);
+        },
 
-    exports.getParam = function(name){
-        return params[name] ? params[name].value : null;
-    };
+        replace: function(url) {
+            init();
+            history.replaceState(null, null, url);
+        },
 
-    exports.addParam = function(name, extractor) {
-        if (!params[name]) {
-            if (!extractor) {
-                extractor = getRegExp(name + "=([^&]+)")
-            }
-            else if (!isFunction(extractor)) {
-                extractor = isString(extractor) ? getRegExp(extractor) : extractor;
-            }
+        current: function() {
+            init();
+            return getCurrentUrl();
+        },
 
-            params[name] = {
-                name: name,
-                value: null,
-                extractor: extractor
+        init: function() {
+            return init();
+        },
+
+        polyfill: function() {
+            init();
+            window.history.pushState = function(state, title, url) {
+                pushState(url);
             };
-            params[name].value = getParam(name, getCurrentUrl());
-        }
-    };
+            window.history.replaceState = function(state, title, url) {
+                replaceState(url);
+            };
+        },
 
-    return exports;
+        getParam: function(name){
+            return params[name] ? params[name].value : null;
+        },
+
+        addParam: function(name, extractor) {
+            init();
+            if (!params[name]) {
+                if (!extractor) {
+                    extractor = getRegExp(name + "=([^&]+)")
+                }
+                else if (!isFunction(extractor)) {
+                    extractor = isString(extractor) ? getRegExp(extractor) : extractor;
+                }
+
+                params[name] = {
+                    name: name,
+                    value: null,
+                    extractor: extractor
+                };
+                params[name].value = getParam(name, getCurrentUrl());
+            }
+        }
+
+    });
+
 }();
 
+
 });
+

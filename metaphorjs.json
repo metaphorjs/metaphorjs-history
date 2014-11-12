@@ -24,11 +24,16 @@
         "npm": {
             "target": "dist/metaphorjs.history.npm.js",
             "compile": false,
+            "wrap": {
+                "exported": true,
+                "deferred": true,
+                "args": ["window"]
+            },
             "files": [
                 [
                     "src/metaphorjs.history.js",
                     {
-                        "keepExports": true
+                        "as": "mhistory"
                     }
                 ]
             ],
@@ -37,7 +42,8 @@
             },
             "omit": [
                 "../metaphorjs-observable/src/metaphorjs.observable.js"
-            ]
+            ],
+            "returns": "mhistory"
         },
         "amd": {
             "target": "dist/metaphorjs.history.amd.js",

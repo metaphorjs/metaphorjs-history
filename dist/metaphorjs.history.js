@@ -1,37 +1,191 @@
 (function(){
 "use strict";
 
-var addListener = function(el, event, func) {
+function addListener(el, event, func) {
     if (el.attachEvent) {
         el.attachEvent('on' + event, func);
     } else {
         el.addEventListener(event, func, false);
     }
 };
-var returnFalse = function() {
+
+function returnFalse() {
     return false;
 };
 
-var returnTrue = function() {
+
+function returnTrue() {
     return true;
 };
+
 var undf = undefined;
-var isNull = function(value) {
+
+function isNull(value) {
     return value === null;
 };
 
 
+var slice = Array.prototype.slice;
+
+var toString = Object.prototype.toString;
+
+
+
+
+var varType = function(){
+
+    var types = {
+        '[object String]': 0,
+        '[object Number]': 1,
+        '[object Boolean]': 2,
+        '[object Object]': 3,
+        '[object Function]': 4,
+        '[object Array]': 5,
+        '[object RegExp]': 9,
+        '[object Date]': 10
+    };
+
+
+    /**
+     * 'string': 0,
+     * 'number': 1,
+     * 'boolean': 2,
+     * 'object': 3,
+     * 'function': 4,
+     * 'array': 5,
+     * 'null': 6,
+     * 'undefined': 7,
+     * 'NaN': 8,
+     * 'regexp': 9,
+     * 'date': 10,
+     * unknown: -1
+     * @param {*} value
+     * @returns {number}
+     */
+    return function varType(val) {
+
+        if (!val) {
+            if (val === null) {
+                return 6;
+            }
+            if (val === undf) {
+                return 7;
+            }
+        }
+
+        var num = types[toString.call(val)];
+
+        if (num === undf) {
+            return -1;
+        }
+
+        if (num == 1 && isNaN(val)) {
+            return 8;
+        }
+
+        return num;
+    };
+
+}();
+
+
+
+function isPlainObject(value) {
+    // IE < 9 returns [object Object] from toString(htmlElement)
+    return typeof value == "object" &&
+           varType(value) === 3 &&
+            !value.nodeType &&
+            value.constructor === Object;
+
+};
+
+function isBool(value) {
+    return value === true || value === false;
+};
+
+
+
+
+var extend = function(){
+
+    /**
+     * @param {Object} dst
+     * @param {Object} src
+     * @param {Object} src2 ... srcN
+     * @param {boolean} override = false
+     * @param {boolean} deep = false
+     * @returns {object}
+     */
+    var extend = function extend() {
+
+
+        var override    = false,
+            deep        = false,
+            args        = slice.call(arguments),
+            dst         = args.shift(),
+            src,
+            k,
+            value;
+
+        if (isBool(args[args.length - 1])) {
+            override    = args.pop();
+        }
+        if (isBool(args[args.length - 1])) {
+            deep        = override;
+            override    = args.pop();
+        }
+
+        while (args.length) {
+            if (src = args.shift()) {
+                for (k in src) {
+
+                    if (src.hasOwnProperty(k) && (value = src[k]) !== undf) {
+
+                        if (deep) {
+                            if (dst[k] && isPlainObject(dst[k]) && isPlainObject(value)) {
+                                extend(dst[k], value, override, deep);
+                            }
+                            else {
+                                if (override === true || dst[k] == undf) { // == checks for null and undefined
+                                    if (isPlainObject(value)) {
+                                        dst[k] = {};
+                                        extend(dst[k], value, override, true);
+                                    }
+                                    else {
+                                        dst[k] = value;
+                                    }
+                                }
+                            }
+                        }
+                        else {
+                            if (override === true || dst[k] == undf) {
+                                dst[k] = value;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return dst;
+    };
+
+    return extend;
+}();
+
+
+
 // from jQuery
 
-var NormalizedEvent = function(src) {
+var DomEvent = function(src) {
 
-    if (src instanceof NormalizedEvent) {
+    if (src instanceof DomEvent) {
         return src;
     }
 
     // Allow instantiation without the 'new' keyword
-    if (!(this instanceof NormalizedEvent)) {
-        return new NormalizedEvent(src);
+    if (!(this instanceof DomEvent)) {
+        return new DomEvent(src);
     }
 
 
@@ -61,7 +215,7 @@ var NormalizedEvent = function(src) {
 
     // Calculate pageX/Y if missing and clientX/Y available
     if (self.pageX === undf && !isNull(src.clientX)) {
-        eventDoc = self.target ? self.target.ownerDocument || document : document;
+        eventDoc = self.target ? self.target.ownerDocument || window.document : window.document;
         doc = eventDoc.documentElement;
         body = eventDoc.body;
 
@@ -95,7 +249,7 @@ var NormalizedEvent = function(src) {
 
 // Event is based on DOM3 Events as specified by the ECMAScript Language Binding
 // http://www.w3.org/TR/2003/WD-DOM-Level-3-Events-20030331/ecma-script-binding.html
-NormalizedEvent.prototype = {
+extend(DomEvent.prototype, {
 
     isDefaultPrevented: returnFalse,
     isPropagationStopped: returnFalse,
@@ -131,23 +285,25 @@ NormalizedEvent.prototype = {
 
         this.stopPropagation();
     }
+}, true, false);
+
+
+
+
+function normalizeEvent(originalEvent) {
+    return new DomEvent(originalEvent);
 };
 
 
 
-var normalizeEvent = function(originalEvent) {
-    return new NormalizedEvent(originalEvent);
-};
-
-
-/**
- * @returns {String}
- */
 var nextUid = function(){
     var uid = ['0', '0', '0'];
 
     // from AngularJs
-    return function() {
+    /**
+     * @returns {String}
+     */
+    return function nextUid() {
         var index = uid.length;
         var digit;
 
@@ -170,6 +326,7 @@ var nextUid = function(){
     };
 }();
 
+
 /**
  * @param {Function} fn
  * @param {*} context
@@ -186,10 +343,10 @@ var bind = Function.prototype.bind ?
 
 
 
-var slice = Array.prototype.slice;
-var isFunction = function(value) {
+function isFunction(value) {
     return typeof value == 'function';
 };
+
 
 
 
@@ -198,15 +355,13 @@ var isFunction = function(value) {
  * <p>A javascript event system implementing two patterns - observable and collector.</p>
  *
  * <p>Observable:</p>
- * <pre><code class="language-javascript">
- * var o = new MetaphorJs.lib.Observable;
+ * <pre><code class="language-javascript">var o = new Observable;
  * o.on("event", function(x, y, z){ console.log([x, y, z]) });
  * o.trigger("event", 1, 2, 3); // [1, 2, 3]
  * </code></pre>
  *
  * <p>Collector:</p>
- * <pre><code class="language-javascript">
- * var o = new MetaphorJs.lib.Observable;
+ * <pre><code class="language-javascript">var o = new Observable;
  * o.createEvent("collectStuff", "all");
  * o.on("collectStuff", function(){ return 1; });
  * o.on("collectStuff", function(){ return 2; });
@@ -215,15 +370,13 @@ var isFunction = function(value) {
  *
  * <p>Although all methods are public there is getApi() method that allows you
  * extending your own objects without overriding "destroy" (which you probably have)</p>
- * <pre><code class="language-javascript">
- * var o = new MetaphorJs.lib.Observable;
+ * <pre><code class="language-javascript">var o = new Observable;
  * $.extend(this, o.getApi());
  * this.on("event", function(){ alert("ok") });
  * this.trigger("event");
  * </code></pre>
  *
- * @namespace MetaphorJs
- * @class MetaphorJs.lib.Observable
+ * @class Observable
  * @version 1.1
  * @author johann kuindji
  * @link https://github.com/kuindji/metaphorjs-observable
@@ -235,16 +388,14 @@ var Observable = function() {
 };
 
 
-Observable.prototype = {
+extend(Observable.prototype, {
 
     /**
-    * <p>You don't have to call this function unless you want to pass returnResult param.
-    * This function will be automatically called from on() with
-    * <code class="language-javascript">returnResult = false</code>,
-    * so if you want to receive handler's return values, create event first, then call on().</p>
+    * You don't have to call this function unless you want to pass returnResult param.
+    * This function will be automatically called from {@link on} with <code>returnResult = false</code>,
+    * so if you want to receive handler's return values, create event first, then call on().
     *
-    * <pre><code class="language-javascript">
-    * var observable = new MetaphorJs.lib.Observable;
+    * <pre><code class="language-javascript">var observable = new Observable;
     * observable.createEvent("collectStuff", "all");
     * observable.on("collectStuff", function(){ return 1; });
     * observable.on("collectStuff", function(){ return 2; });
@@ -261,11 +412,12 @@ Observable.prototype = {
     *   false -- do not return results except if handler returned "false". This is how
     *   normal observables work.<br>
     *   "all" -- return all results as array<br>
+    *   "merge" -- merge all results into one array (each result must be array)<br>
     *   "first" -- return result of the first handler<br>
-    *   "last" -- return result of the last handler
+    *   "last" -- return result of the last handler<br>
     *   @required
     * }
-    * @return MetaphorJs.lib.ObservableEvent
+    * @return {ObservableEvent}
     */
     createEvent: function(name, returnResult) {
         name = name.toLowerCase();
@@ -280,7 +432,7 @@ Observable.prototype = {
     * @method
     * @access public
     * @param {string} name Event name
-    * @return MetaphorJs.lib.ObservableEvent|undefined
+    * @return {ObservableEvent|undefined}
     */
     getEvent: function(name) {
         name = name.toLowerCase();
@@ -291,7 +443,6 @@ Observable.prototype = {
     * Subscribe to an event or register collector function.
     * @method
     * @access public
-    * @md-save on
     * @param {string} name {
     *       Event name
     *       @required
@@ -300,44 +451,43 @@ Observable.prototype = {
     *       Callback function
     *       @required
     * }
-    * @param {object} scope "this" object for the callback function
+    * @param {object} context "this" object for the callback function
     * @param {object} options {
-    *       @type bool first {
+    *       @type {bool} first {
     *           True to prepend to the list of handlers
     *           @default false
     *       }
-    *       @type number limit {
+    *       @type {number} limit {
     *           Call handler this number of times; 0 for unlimited
     *           @default 0
     *       }
-    *       @type number start {
+    *       @type {number} start {
     *           Start calling handler after this number of calls. Starts from 1
     *           @default 1
     *       }
-     *      @type [] append Append parameters
-     *      @type [] prepend Prepend parameters
-     *      @type bool allowDupes allow the same handler twice
+     *      @type {[]} append Append parameters
+     *      @type {[]} prepend Prepend parameters
+     *      @type {bool} allowDupes allow the same handler twice
     * }
     */
-    on: function(name, fn, scope, options) {
+    on: function(name, fn, context, options) {
         name = name.toLowerCase();
         var events  = this.events;
         if (!events[name]) {
             events[name] = new Event(name);
         }
-        return events[name].on(fn, scope, options);
+        return events[name].on(fn, context, options);
     },
 
     /**
-    * Same as on(), but options.limit is forcefully set to 1.
+    * Same as {@link Observable.on}, but options.limit is forcefully set to 1.
     * @method
-    * @md-apply on
     * @access public
     */
-    once: function(name, fn, scope, options) {
+    once: function(name, fn, context, options) {
         options     = options || {};
         options.limit = 1;
-        return this.on(name, fn, scope, options);
+        return this.on(name, fn, context, options);
     },
 
 
@@ -347,15 +497,15 @@ Observable.prototype = {
     * @access public
     * @param {string} name Event name
     * @param {function} fn Event handler
-    * @param {object} scope If you called on() with scope you must call un() with the same scope
+    * @param {object} context If you called on() with context you must call un() with the same context
     */
-    un: function(name, fn, scope) {
+    un: function(name, fn, context) {
         name = name.toLowerCase();
         var events  = this.events;
         if (!events[name]) {
             return;
         }
-        events[name].un(fn, scope);
+        events[name].un(fn, context);
     },
 
     /**
@@ -370,16 +520,16 @@ Observable.prototype = {
     * @access public
     * @param {string} name Event name { @required }
     * @param {function} fn Callback function { @required }
-    * @param {object} scope Function's "this" object
+    * @param {object} context Function's "this" object
     * @return bool
     */
-    hasListener: function(name, fn, scope) {
+    hasListener: function(name, fn, context) {
         name = name.toLowerCase();
         var events  = this.events;
         if (!events[name]) {
             return false;
         }
-        return events[name].hasListener(fn, scope);
+        return events[name].hasListener(fn, context);
     },
 
 
@@ -494,7 +644,7 @@ Observable.prototype = {
 
 
     /**
-    * Destroy specific event
+    * Destroy observable
     * @method
     * @md-not-inheritable
     * @access public
@@ -549,13 +699,14 @@ Observable.prototype = {
 
         return self.api;
     }
-};
+}, true, false);
 
 
 /**
  * This class is private - you can't create an event other than via Observable.
- * See MetaphorJs.lib.Observable reference.
- * @class MetaphorJs.lib.ObservableEvent
+ * See Observable reference.
+ * @class ObservableEvent
+ * @private
  */
 var Event = function(name, returnResult) {
 
@@ -572,8 +723,13 @@ var Event = function(name, returnResult) {
 };
 
 
-Event.prototype = {
+extend(Event.prototype, {
 
+    /**
+     * Get event name
+     * @method
+     * @returns {string}
+     */
     getName: function() {
         return this.name;
     },
@@ -590,36 +746,36 @@ Event.prototype = {
     /**
      * @method
      * @param {function} fn Callback function { @required }
-     * @param {object} scope Function's "this" object
+     * @param {object} context Function's "this" object
      * @param {object} options See Observable's on()
      */
-    on: function(fn, scope, options) {
+    on: function(fn, context, options) {
 
         if (!fn) {
             return null;
         }
 
-        scope       = scope || null;
+        context     = context || null;
         options     = options || {};
 
         var self        = this,
             uni         = self.uni,
-            uniScope    = scope || fn;
+            uniContext  = context || fn;
 
-        if (uniScope[uni] && !options.allowDupes) {
+        if (uniContext[uni] && !options.allowDupes) {
             return null;
         }
 
         var id      = ++self.lid,
             first   = options.first || false;
 
-        uniScope[uni]  = id;
+        uniContext[uni]  = id;
 
 
         var e = {
             fn:         fn,
-            scope:      scope,
-            uniScope:   uniScope,
+            context:    context,
+            uniContext: uniContext,
             id:         id,
             called:     0, // how many times the function was triggered
             limit:      options.limit || 0, // how many times the function is allowed to trigger
@@ -644,23 +800,23 @@ Event.prototype = {
     /**
      * @method
      * @param {function} fn Callback function { @required }
-     * @param {object} scope Function's "this" object
+     * @param {object} context Function's "this" object
      * @param {object} options See Observable's on()
      */
-    once: function(fn, scope, options) {
+    once: function(fn, context, options) {
 
         options = options || {};
         options.once = true;
 
-        return this.on(fn, scope, options);
+        return this.on(fn, context, options);
     },
 
     /**
      * @method
      * @param {function} fn Callback function { @required }
-     * @param {object} scope Function's "this" object
+     * @param {object} context Function's "this" object
      */
-    un: function(fn, scope) {
+    un: function(fn, context) {
 
         var self        = this,
             inx         = -1,
@@ -672,8 +828,8 @@ Event.prototype = {
             id      = fn;
         }
         else {
-            scope   = scope || fn;
-            id      = scope[uni];
+            context = context || fn;
+            id      = context[uni];
         }
 
         if (!id) {
@@ -683,7 +839,7 @@ Event.prototype = {
         for (var i = 0, len = listeners.length; i < len; i++) {
             if (listeners[i].id == id) {
                 inx = i;
-                delete listeners[i].uniScope[uni];
+                delete listeners[i].uniContext[uni];
                 break;
             }
         }
@@ -705,10 +861,10 @@ Event.prototype = {
     /**
      * @method
      * @param {function} fn Callback function { @required }
-     * @param {object} scope Function's "this" object
+     * @param {object} context Function's "this" object
      * @return bool
      */
-    hasListener: function(fn, scope) {
+    hasListener: function(fn, context) {
 
         var self    = this,
             listeners   = self.listeners,
@@ -716,13 +872,13 @@ Event.prototype = {
 
         if (fn) {
 
-            scope   = scope || fn;
+            context = context || fn;
 
             if (!isFunction(fn)) {
                 id  = fn;
             }
             else {
-                id  = scope[self.uni];
+                id  = context[self.uni];
             }
 
             if (!id) {
@@ -753,7 +909,7 @@ Event.prototype = {
             i, len;
 
         for (i = 0, len = listeners.length; i < len; i++) {
-            delete listeners[i].uniScope[uni];
+            delete listeners[i].uniContext[uni];
         }
         self.listeners   = [];
         self.map         = {};
@@ -807,7 +963,8 @@ Event.prototype = {
             return null;
         }
 
-        var ret     = returnResult == "all" ? [] : null,
+        var ret     = returnResult == "all" || returnResult == "merge" ?
+                        [] : null,
             q, l,
             res;
 
@@ -835,7 +992,7 @@ Event.prototype = {
                 continue;
             }
 
-            res = l.fn.apply(l.scope, self._prepareArgs(l, arguments));
+            res = l.fn.apply(l.context, self._prepareArgs(l, arguments));
 
             l.called++;
 
@@ -846,17 +1003,17 @@ Event.prototype = {
             if (returnResult == "all") {
                 ret.push(res);
             }
-
-            if (returnResult == "first") {
+            else if (returnResult == "merge" && res) {
+                ret = ret.concat(res);
+            }
+            else if (returnResult == "first") {
                 return res;
             }
-
-            if (returnResult == "last") {
+            else if (returnResult == "last") {
                 ret = res;
             }
-
-            if (returnResult == false && res === false) {
-                break;
+            else if (returnResult == false && res === false) {
+                return false;
             }
         }
 
@@ -864,200 +1021,81 @@ Event.prototype = {
             return ret;
         }
     }
-};
+}, true, false);
 
 
 
-var toString = Object.prototype.toString;
+
+
+function emptyFn(){};
 
 
 
-var varType = function(){
-
-    var types = {
-        '[object String]': 0,
-        '[object Number]': 1,
-        '[object Boolean]': 2,
-        '[object Object]': 3,
-        '[object Function]': 4,
-        '[object Array]': 5,
-        '[object RegExp]': 9,
-        '[object Date]': 10
-    };
-
-
-    /**
-        'string': 0,
-        'number': 1,
-        'boolean': 2,
-        'object': 3,
-        'function': 4,
-        'array': 5,
-        'null': 6,
-        'undefined': 7,
-        'NaN': 8,
-        'regexp': 9,
-        'date': 10
-    */
-
-    return function(val) {
-
-        if (!val) {
-            if (val === null) {
-                return 6;
-            }
-            if (val === undf) {
-                return 7;
-            }
-        }
-
-        var num = types[toString.call(val)];
-
-        if (num === undf) {
-            return -1;
-        }
-
-        if (num == 1 && isNaN(val)) {
-            return 8;
-        }
-
-        return num;
-    };
-
-}();
-
-
-var isPlainObject = function(value) {
-    // IE < 9 returns [object Object] from toString(htmlElement)
-    return typeof value == "object" && varType(value) === 3 && !value.nodeType;
-};
-
-
-var isBool = function(value) {
-    return value === true || value === false;
-};
-
-
-/**
- * @param {Object} dst
- * @param {Object} src
- * @param {Object} src2 ... srcN
- * @param {boolean} override = false
- * @param {boolean} deep = false
- * @returns {*}
- */
-var extend = function(){
-
-    var extend = function extend() {
-
-
-        var override    = false,
-            deep        = false,
-            args        = slice.call(arguments),
-            dst         = args.shift(),
-            src,
-            k,
-            value;
-
-        if (isBool(args[args.length - 1])) {
-            override    = args.pop();
-        }
-        if (isBool(args[args.length - 1])) {
-            deep        = override;
-            override    = args.pop();
-        }
-
-        while (args.length) {
-            if (src = args.shift()) {
-                for (k in src) {
-
-                    if (src.hasOwnProperty(k) && (value = src[k]) !== undf) {
-
-                        if (deep) {
-                            if (dst[k] && isPlainObject(dst[k]) && isPlainObject(value)) {
-                                extend(dst[k], value, override, deep);
-                            }
-                            else {
-                                if (override === true || dst[k] == undf) { // == checks for null and undefined
-                                    if (isPlainObject(value)) {
-                                        dst[k] = {};
-                                        extend(dst[k], value, override, true);
-                                    }
-                                    else {
-                                        dst[k] = value;
-                                    }
-                                }
-                            }
-                        }
-                        else {
-                            if (override === true || dst[k] == undf) {
-                                dst[k] = value;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return dst;
-    };
-
-    return extend;
-}();
-
-var emptyFn = function(){};
-
-
-var isString = function(value) {
+function isString(value) {
     return typeof value == "string" || value === ""+value;
     //return typeof value == "string" || varType(value) === 0;
-};/**
- * @param {String} expr
- */
+};
+
 var getRegExp = function(){
 
     var cache = {};
 
-    return function(expr) {
+    /**
+     * @param {String} expr
+     * @returns RegExp
+     */
+    return function getRegExp(expr) {
         return cache[expr] || (cache[expr] = new RegExp(expr));
     };
 }();
-var getAttr = function(el, name) {
-    return el.getAttribute(name);
-};/**
+
+function getAttr(el, name) {
+    return el.getAttribute ? el.getAttribute(name) : null;
+};
+/**
  * @param {Function} fn
  * @param {Object} context
  * @param {[]} args
  * @param {number} timeout
  */
-var async = function(fn, context, args, timeout) {
+function async(fn, context, args, timeout) {
     setTimeout(function(){
         fn.apply(context, args || []);
     }, timeout || 0);
 };
 
 
+
+
 var history = function(){
 
-    var win             = window,
-        history         = win.history,
-        location        = win.location,
+    var win,
+        history,
+        location,
         observable      = new Observable,
-        exports         = {},
+        api             = {},
         params          = {},
 
-        listeners       = {
-            locationChange: [],
-            beforeLocationChange: []
-        },
-        windowLoaded    = false,
+        pushState,
+        replaceState,
+
+        windowLoaded    = typeof window == "undefined",
         rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
-        pushStateSupported  = !!history.pushState,
-        hashChangeSupported = "onhashchange" in win,
-        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+        pushStateSupported,
+        hashChangeSupported,
+        useHash;
 
-    extend(exports, observable.getApi());
+    observable.createEvent("beforeLocationChange", false);
+
+    var initWindow = function() {
+        win                 = window;
+        history             = win.history;
+        location            = win.location;
+        pushStateSupported  = !!history.pushState;
+        hashChangeSupported = "onhashchange" in win;
+        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+    };
 
     var preparePath = function(url) {
 
@@ -1185,33 +1223,25 @@ var history = function(){
             val     = getParam(i, url);
             params[i].value = val;
             if (val != prev) {
-                exports.trigger("change-" + i, val, prev, i, url);
+                observable.trigger("change-" + i, val, prev, i, url);
             }
         }
     };
 
     var onLocationChange = function(){
         var url = getCurrentUrl();
-        triggerEvent("locationChange", false, url);
+        triggerEvent("locationChange", url);
         checkParamChange(url);
     };
 
-    var triggerEvent = function triggerEvent(event, breakable, data) {
-
-        var url = data || getCurrentUrl(),
-            res;
-
-        for (var i = -1, l = listeners[event].length; ++i < l;){
-            res = listeners[event][i].call(null, url);
-            if (breakable && res === false) {
-                return false;
-            }
-        }
-
-        return exports.trigger(event, url);
+    var triggerEvent = function triggerEvent(event, data) {
+        var url = data || getCurrentUrl();
+        return observable.trigger(event, url);
     };
 
     var init = function() {
+
+        initWindow();
 
         // normal pushState
         if (pushStateSupported) {
@@ -1221,19 +1251,20 @@ var history = function(){
 
             addListener(win, "popstate", onLocationChange);
 
-            history.pushState = function(state, title, url) {
-                if (triggerEvent("beforeLocationChange", true, url) === false) {
+            pushState = function(url) {
+                if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origPushState(state, title, preparePath(url));
+                history.origPushState(null, null, preparePath(url));
                 onLocationChange();
             };
 
-            history.replaceState = function(state, title, url) {
-                if (triggerEvent("beforeLocationChange", true, url) === false) {
+
+            replaceState = function(url) {
+                if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origReplaceState(state, title, preparePath(url));
+                history.origReplaceState(null, null, preparePath(url));
                 onLocationChange();
             };
         }
@@ -1242,12 +1273,13 @@ var history = function(){
             // onhashchange
             if (hashChangeSupported) {
 
-                history.replaceState = history.pushState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                replaceState = pushState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     async(setHash, null, [preparePath(url)]);
                 };
+
                 addListener(win, "hashchange", onLocationChange);
             }
             // iframe
@@ -1257,10 +1289,10 @@ var history = function(){
                     initialUpdate = false;
 
                 var createFrame = function() {
-                    frame   = document.createElement("iframe");
+                    frame   = window.document.createElement("iframe");
                     frame.src = 'about:blank';
                     frame.style.display = 'none';
-                    document.body.appendChild(frame);
+                    window.document.body.appendChild(frame);
                 };
 
                 win.onIframeHistoryChange = function(val) {
@@ -1291,15 +1323,15 @@ var history = function(){
                 };
 
 
-                history.pushState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                pushState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
-                history.replaceState = function(state, title, url) {
-                    if (triggerEvent("beforeLocationChange", true, url) === false) {
+                replaceState = function(url) {
+                    if (triggerEvent("beforeLocationChange", url) === false) {
                         return false;
                     }
                     replaceFrame(preparePath(url));
@@ -1323,7 +1355,7 @@ var history = function(){
 
 
 
-        addListener(document.documentElement, "click", function(e) {
+        addListener(window.document.documentElement, "click", function(e) {
 
             e = normalizeEvent(e || win.event);
 
@@ -1352,63 +1384,74 @@ var history = function(){
             return null;
         });
 
-        history.initPushState = emptyFn;
-        exports.initPushState = emptyFn;
+        init = emptyFn;
     };
 
-    addListener(win, "load", function() {
+
+    addListener(window, "load", function() {
         windowLoaded = true;
     });
 
-    history.initPushState = init;
 
-    history.onBeforeChange = function(fn) {
-        listeners.beforeLocationChange.push(fn);
-    };
-    history.onChange = function(fn) {
-        listeners.locationChange.push(fn);
-    };
+    return extend(api, observable.getApi(), {
 
-    exports.pushUrl = function(url) {
-        history.pushState(null, null, url);
-    };
-    exports.replaceUrl = function(url) {
-        history.replaceState(null, null, url);
-    };
-    exports.currentUrl = function() {
-        return getCurrentUrl();
-    };
-    exports.initPushState = function() {
-        return init();
-    };
+        push: function(url) {
+            init();
+            history.pushState(null, null, url);
+        },
 
-    exports.getParam = function(name){
-        return params[name] ? params[name].value : null;
-    };
+        replace: function(url) {
+            init();
+            history.replaceState(null, null, url);
+        },
 
-    exports.addParam = function(name, extractor) {
-        if (!params[name]) {
-            if (!extractor) {
-                extractor = getRegExp(name + "=([^&]+)")
-            }
-            else if (!isFunction(extractor)) {
-                extractor = isString(extractor) ? getRegExp(extractor) : extractor;
-            }
+        current: function() {
+            init();
+            return getCurrentUrl();
+        },
 
-            params[name] = {
-                name: name,
-                value: null,
-                extractor: extractor
+        init: function() {
+            return init();
+        },
+
+        polyfill: function() {
+            init();
+            window.history.pushState = function(state, title, url) {
+                pushState(url);
             };
-            params[name].value = getParam(name, getCurrentUrl());
-        }
-    };
+            window.history.replaceState = function(state, title, url) {
+                replaceState(url);
+            };
+        },
 
-    return exports;
+        getParam: function(name){
+            return params[name] ? params[name].value : null;
+        },
+
+        addParam: function(name, extractor) {
+            init();
+            if (!params[name]) {
+                if (!extractor) {
+                    extractor = getRegExp(name + "=([^&]+)")
+                }
+                else if (!isFunction(extractor)) {
+                    extractor = isString(extractor) ? getRegExp(extractor) : extractor;
+                }
+
+                params[name] = {
+                    name: name,
+                    value: null,
+                    extractor: extractor
+                };
+                params[name].value = getParam(name, getCurrentUrl());
+            }
+        }
+
+    });
+
 }();
 
 MetaphorJs['history'] = history;
-
 typeof global != "undefined" ? (global['MetaphorJs'] = MetaphorJs) : (window['MetaphorJs'] = MetaphorJs);
 
 }());
