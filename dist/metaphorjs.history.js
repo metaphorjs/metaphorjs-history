@@ -1,14 +1,6 @@
 (function(){
 "use strict";
 
-function addListener(el, event, func) {
-    if (el.attachEvent) {
-        el.attachEvent('on' + event, func);
-    } else {
-        el.addEventListener(event, func, false);
-    }
-};
-
 function returnFalse() {
     return false;
 };
@@ -295,6 +287,176 @@ function normalizeEvent(originalEvent) {
 };
 
 
+// from jquery.mousewheel plugin
+
+
+
+var mousewheelHandler = function(e) {
+
+    function shouldAdjustOldDeltas(orgEvent, absDelta) {
+        // If this is an older event and the delta is divisable by 120,
+        // then we are assuming that the browser is treating this as an
+        // older mouse wheel event and that we should divide the deltas
+        // by 40 to try and get a more usable deltaFactor.
+        // Side note, this actually impacts the reported scroll distance
+        // in older browsers and can cause scrolling to be slower than native.
+        // Turn this off by setting $.event.special.mousewheel.settings.adjustOldDeltas to false.
+        return orgEvent.type === 'mousewheel' && absDelta % 120 === 0;
+    }
+
+    function nullLowestDelta() {
+        lowestDelta = null;
+    }
+
+    var toBind = ( 'onwheel' in document || document.documentMode >= 9 ) ?
+                 ['wheel'] : ['mousewheel', 'DomMouseScroll', 'MozMousePixelScroll'],
+        nullLowestDeltaTimeout, lowestDelta;
+
+    var mousewheelHandler = function(fn) {
+
+        return function(e) {
+
+            var event = normalizeEvent(e || window.event),
+                args = slice.call(arguments, 1),
+                delta = 0,
+                deltaX = 0,
+                deltaY = 0,
+                absDelta = 0,
+                offsetX = 0,
+                offsetY = 0;
+
+
+            event.type = 'mousewheel';
+
+            // Old school scrollwheel delta
+            if ('detail'      in event) { deltaY = event.detail * -1; }
+            if ('wheelDelta'  in event) { deltaY = event.wheelDelta; }
+            if ('wheelDeltaY' in event) { deltaY = event.wheelDeltaY; }
+            if ('wheelDeltaX' in event) { deltaX = event.wheelDeltaX * -1; }
+
+            // Firefox < 17 horizontal scrolling related to DOMMouseScroll event
+            if ('axis' in event && event.axis === event.HORIZONTAL_AXIS) {
+                deltaX = deltaY * -1;
+                deltaY = 0;
+            }
+
+            // Set delta to be deltaY or deltaX if deltaY is 0 for backwards compatabilitiy
+            delta = deltaY === 0 ? deltaX : deltaY;
+
+            // New school wheel delta (wheel event)
+            if ('deltaY' in event) {
+                deltaY = event.deltaY * -1;
+                delta = deltaY;
+            }
+            if ('deltaX' in event) {
+                deltaX = event.deltaX;
+                if (deltaY === 0) { delta = deltaX * -1; }
+            }
+
+            // No change actually happened, no reason to go any further
+            if (deltaY === 0 && deltaX === 0) { return; }
+
+            // Store lowest absolute delta to normalize the delta values
+            absDelta = Math.max(Math.abs(deltaY), Math.abs(deltaX));
+
+            if (!lowestDelta || absDelta < lowestDelta) {
+                lowestDelta = absDelta;
+
+                // Adjust older deltas if necessary
+                if (shouldAdjustOldDeltas(event, absDelta)) {
+                    lowestDelta /= 40;
+                }
+            }
+
+            // Adjust older deltas if necessary
+            if (shouldAdjustOldDeltas(event, absDelta)) {
+                // Divide all the things by 40!
+                delta /= 40;
+                deltaX /= 40;
+                deltaY /= 40;
+            }
+
+            // Get a whole, normalized value for the deltas
+            delta = Math[delta >= 1 ? 'floor' : 'ceil'](delta / lowestDelta);
+            deltaX = Math[deltaX >= 1 ? 'floor' : 'ceil'](deltaX / lowestDelta);
+            deltaY = Math[deltaY >= 1 ? 'floor' : 'ceil'](deltaY / lowestDelta);
+
+            // Normalise offsetX and offsetY properties
+            if (this.getBoundingClientRect) {
+                var boundingRect = this.getBoundingClientRect();
+                offsetX = event.clientX - boundingRect.left;
+                offsetY = event.clientY - boundingRect.top;
+            }
+
+            // Add information to the event object
+            event.deltaX = deltaX;
+            event.deltaY = deltaY;
+            event.deltaFactor = lowestDelta;
+            event.offsetX = offsetX;
+            event.offsetY = offsetY;
+            // Go ahead and set deltaMode to 0 since we converted to pixels
+            // Although this is a little odd since we overwrite the deltaX/Y
+            // properties with normalized deltas.
+            event.deltaMode = 0;
+
+            // Add event and delta to the front of the arguments
+            args.unshift(event, delta, deltaX, deltaY);
+
+            // Clearout lowestDelta after sometime to better
+            // handle multiple device types that give different
+            // a different lowestDelta
+            // Ex: trackpad = 3 and mouse wheel = 120
+            if (nullLowestDeltaTimeout) { clearTimeout(nullLowestDeltaTimeout); }
+            nullLowestDeltaTimeout = setTimeout(nullLowestDelta, 200);
+
+
+
+            return fn.apply(this, args);
+        }
+    };
+
+    mousewheelHandler.events = function() {
+        var doc = window.document;
+        return ( 'onwheel' in doc || doc.documentMode >= 9 ) ?
+               ['wheel'] : ['mousewheel', 'DomMouseScroll', 'MozMousePixelScroll'];
+    };
+
+    return mousewheelHandler;
+
+}();
+
+
+
+var addListener = function(){
+
+    var fn = null,
+        prefix = null;
+
+    return function addListener(el, event, func) {
+
+        if (fn === null) {
+            fn = el.attachEvent ? "attachEvent" : "addEventListener";
+            prefix = el.attachEvent ? "on" : "";
+        }
+
+
+        if (event == "mousewheel") {
+            func = mousewheelHandler(func);
+            var events = mousewheelHandler.events(),
+                i, l;
+            for (i = 0, l = events.length; i < l; i++) {
+                el[fn](prefix + events[i], func, false);
+            }
+        }
+        else {
+            el[fn](prefix + event, func, false);
+        }
+
+        return func;
+    }
+
+}();
+
 
 var nextUid = function(){
     var uid = ['0', '0', '0'];
@@ -417,13 +579,19 @@ extend(Observable.prototype, {
     *   "last" -- return result of the last handler<br>
     *   @required
     * }
+    * @param {bool} autoTrigger -- once triggered, all future subscribers will be automatically called
+    * with last trigger params
+    * @param {function} triggerFilter {
+    *   @param {object} listener
+    *   @param {[]} arguments
+    * }
     * @return {ObservableEvent}
     */
-    createEvent: function(name, returnResult) {
+    createEvent: function(name, returnResult, autoTrigger, triggerFilter) {
         name = name.toLowerCase();
         var events  = this.events;
         if (!events[name]) {
-            events[name] = new Event(name, returnResult);
+            events[name] = new Event(name, returnResult, autoTrigger, triggerFilter);
         }
         return events[name];
     },
@@ -708,7 +876,7 @@ extend(Observable.prototype, {
  * @class ObservableEvent
  * @private
  */
-var Event = function(name, returnResult) {
+var Event = function(name, returnResult, autoTrigger, triggerFilter) {
 
     var self    = this;
 
@@ -720,10 +888,24 @@ var Event = function(name, returnResult) {
     self.suspended      = false;
     self.lid            = 0;
     self.returnResult   = returnResult === undf ? null : returnResult; // first|last|all
+    self.autoTrigger    = autoTrigger;
+    self.triggerFilter  = triggerFilter;
 };
 
 
 extend(Event.prototype, {
+
+    name: null,
+    listeners: null,
+    map: null,
+    hash: null,
+    uni: null,
+    suspended: false,
+    lid: null,
+    returnResult: null,
+    autoTrigger: null,
+    lastTrigger: null,
+    triggerFilter: null,
 
     /**
      * Get event name
@@ -778,12 +960,14 @@ extend(Event.prototype, {
             uniContext: uniContext,
             id:         id,
             called:     0, // how many times the function was triggered
-            limit:      options.limit || 0, // how many times the function is allowed to trigger
-            start:      options.start || 1, // from which attempt it is allowed to trigger the function
+            limit:      0, // how many times the function is allowed to trigger
+            start:      1, // from which attempt it is allowed to trigger the function
             count:      0, // how many attempts to trigger the function was made
-            append:     options.append, // append parameters
-            prepend:    options.prepend // prepend parameters
+            append:     null, // append parameters
+            prepend:    null // prepend parameters
         };
+
+        extend(e, options, true, false);
 
         if (first) {
             self.listeners.unshift(e);
@@ -793,6 +977,18 @@ extend(Event.prototype, {
         }
 
         self.map[id] = e;
+
+        if (self.autoTrigger && self.lastTrigger && !self.suspended) {
+            var prevFilter = self.triggerFilter;
+            self.triggerFilter = function(l){
+                if (l.id == id) {
+                    return prevFilter ? prevFilter(l) !== false : true;
+                }
+                return false;
+            };
+            self.trigger.apply(self, self.lastTrigger);
+            self.triggerFilter = prevFilter;
+        }
 
         return id;
     },
@@ -957,9 +1153,19 @@ extend(Event.prototype, {
 
         var self            = this,
             listeners       = self.listeners,
-            returnResult    = self.returnResult;
+            returnResult    = self.returnResult,
+            filter          = self.triggerFilter,
+            args;
 
-        if (self.suspended || listeners.length == 0) {
+        if (self.suspended) {
+            return null;
+        }
+
+        if (self.autoTrigger) {
+            self.lastTrigger = slice.call(arguments);
+        }
+
+        if (listeners.length == 0) {
             return null;
         }
 
@@ -986,13 +1192,19 @@ extend(Event.prototype, {
                 continue;
             }
 
+            args = self._prepareArgs(l, arguments);
+
+            if (filter && filter(l, args) === false) {
+                continue;
+            }
+
             l.count++;
 
             if (l.count < l.start) {
                 continue;
             }
 
-            res = l.fn.apply(l.context, self._prepareArgs(l, arguments));
+            res = l.fn.apply(l.context, args);
 
             l.called++;
 
@@ -1059,7 +1271,7 @@ function getAttr(el, name) {
  * @param {number} timeout
  */
 function async(fn, context, args, timeout) {
-    setTimeout(function(){
+    return setTimeout(function(){
         fn.apply(context, args || []);
     }, timeout || 0);
 };
