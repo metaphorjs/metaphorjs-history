@@ -190,8 +190,8 @@ module.exports = function(){
         // normal pushState
         if (pushStateSupported) {
 
-            history.origPushState       = history.pushState;
-            history.origReplaceState    = history.replaceState;
+            //history.origPushState       = history.pushState;
+            //history.origReplaceState    = history.replaceState;
 
             addListener(win, "popstate", onLocationChange);
 
@@ -199,7 +199,7 @@ module.exports = function(){
                 if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origPushState(null, null, preparePath(url));
+                history.pushState(null, null, preparePath(url));
                 onLocationChange();
             };
 
@@ -208,7 +208,7 @@ module.exports = function(){
                 if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origReplaceState(null, null, preparePath(url));
+                history.replaceState(null, null, preparePath(url));
                 onLocationChange();
             };
         }
@@ -297,8 +297,6 @@ module.exports = function(){
             }
         }
 
-
-
         addListener(window.document.documentElement, "click", function(e) {
 
             e = normalizeEvent(e || win.event);
@@ -318,6 +316,10 @@ module.exports = function(){
                     sameHostLink(href) && !samePathLink(href)) {
 
                     history.pushState(null, null, getPathFromUrl(href));
+
+                    if (pushStateSupported) {
+                        onLocationChange();
+                    }
 
                     e.preventDefault();
                     e.stopPropagation();

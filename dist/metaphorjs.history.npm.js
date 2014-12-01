@@ -309,7 +309,7 @@ var mousewheelHandler = function(e) {
         lowestDelta = null;
     }
 
-    var toBind = ( 'onwheel' in document || document.documentMode >= 9 ) ?
+    var toBind = ( 'onwheel' in window.document || window.document.documentMode >= 9 ) ?
                  ['wheel'] : ['mousewheel', 'DomMouseScroll', 'MozMousePixelScroll'],
         nullLowestDeltaTimeout, lowestDelta;
 
@@ -683,8 +683,8 @@ mhistory = history = function(){
         // normal pushState
         if (pushStateSupported) {
 
-            history.origPushState       = history.pushState;
-            history.origReplaceState    = history.replaceState;
+            //history.origPushState       = history.pushState;
+            //history.origReplaceState    = history.replaceState;
 
             addListener(win, "popstate", onLocationChange);
 
@@ -692,7 +692,7 @@ mhistory = history = function(){
                 if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origPushState(null, null, preparePath(url));
+                history.pushState(null, null, preparePath(url));
                 onLocationChange();
             };
 
@@ -701,7 +701,7 @@ mhistory = history = function(){
                 if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
-                history.origReplaceState(null, null, preparePath(url));
+                history.replaceState(null, null, preparePath(url));
                 onLocationChange();
             };
         }
@@ -790,8 +790,6 @@ mhistory = history = function(){
             }
         }
 
-
-
         addListener(window.document.documentElement, "click", function(e) {
 
             e = normalizeEvent(e || win.event);
@@ -811,6 +809,10 @@ mhistory = history = function(){
                     sameHostLink(href) && !samePathLink(href)) {
 
                     history.pushState(null, null, getPathFromUrl(href));
+
+                    if (pushStateSupported) {
+                        onLocationChange();
+                    }
 
                     e.preventDefault();
                     e.stopPropagation();
