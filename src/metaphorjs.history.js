@@ -315,6 +315,8 @@ module.exports = function(){
                 if (href && href.substr(0,1) != "#" && !getAttr(a, "target") &&
                     sameHostLink(href) && !samePathLink(href)) {
 
+                    console.log("change url", href)
+
                     history.pushState(null, null, getPathFromUrl(href));
 
                     if (pushStateSupported) {

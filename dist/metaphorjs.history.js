@@ -1279,12 +1279,11 @@ function async(fn, context, args, timeout) {
         fn.apply(context, args || []);
     }, timeout || 0);
 };
-var mhistory, history;
 
 
 
 
-mhistory = history = function(){
+var history = function(){
 
     var win,
         history,
@@ -1587,6 +1586,8 @@ mhistory = history = function(){
 
                 if (href && href.substr(0,1) != "#" && !getAttr(a, "target") &&
                     sameHostLink(href) && !samePathLink(href)) {
+
+                    console.log("change url", href)
 
                     history.pushState(null, null, getPathFromUrl(href));
 
