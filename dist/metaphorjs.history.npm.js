@@ -499,6 +499,65 @@ function async(fn, context, args, timeout) {
         fn.apply(context, args || []);
     }, timeout || 0);
 };
+
+var rParseLocation = /^(((([^:\/#\?]+:)?(?:(\/\/)((?:(([^:@\/#\?]+)(?:\:([^:@\/#\?]+))?)@)?(([^:\/#\?\]\[]+|\[[^\/\]@#?]+\])(?:\:([0-9]+))?))?)?)?((\/?(?:[^\/\?#]+\/+)*)([^\?#]*)))?(\?[^#]+)?)(#.*)?/;
+
+
+
+
+var parseLocation = function(url) {
+
+    var matches = url.match(rParseLocation) || [],
+        wl = (typeof window != "undefined" ? window.location : null) || {};
+
+    return {
+        protocol: matches[4] || wl.protocol || "http:",
+        hostname: matches[11] || wl.hostname || "",
+        host: ((matches[11] || "") + (matches[12] ? ":" + matches[12] : "")) || wl.host || "",
+        username: matches[8] || wl.username || "",
+        password: matches[9] || wl.password || "",
+        port: parseInt(matches[12], 10) || wl.port || "",
+        href: url,
+        path: (matches[13] || "/") + (matches[16] || ""),
+        pathname: matches[13] || "/",
+        search: matches[16] || "",
+        hash: matches[17] && matches[17] != "#" ? matches[17] : ""
+    };
+};
+
+var joinLocation = function(location, opt) {
+
+    var url = "";
+    opt = opt || {};
+
+    if (!opt.onlyPath) {
+        url += location.protocol + "//";
+
+        if (location.username && location.password) {
+            url += location.username + ":" + location.password + "@";
+        }
+
+        url += location.hostname;
+
+        if (location.hostname && location.port) {
+            url += ":" + location.port;
+        }
+    }
+
+    if (!opt.onlyHost) {
+        url += (location.pathname || "/");
+
+        if (location.search && location.search != "?") {
+            url += location.search;
+        }
+
+        if (location.hash && location.hash != "#") {
+            url += location.hash;
+        }
+    }
+
+    return url;
+};
 var history, mhistory;
 
 
@@ -519,6 +578,8 @@ history = mhistory = function(){
         windowLoaded    = typeof window == "undefined",
         rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
+        prevLocation    = null,
+
         pushStateSupported,
         hashChangeSupported,
         useHash;
@@ -532,81 +593,75 @@ history = mhistory = function(){
         pushStateSupported  = !!history.pushState;
         hashChangeSupported = "onhashchange" in win;
         useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+        prevLocation        = extend({}, location, true, false);
     };
+
+
+    var hostsDiffer = function(prev, next) {
+
+        if (typeof prev == "string") {
+            prev = parseLocation(prev);
+        }
+        if (typeof next == "string") {
+            next = parseLocation(next);
+        }
+
+        var canBeEmpty = ["protocol", "host", "port"],
+            i, l,
+            k;
+
+        for (i = 0, l = canBeEmpty.length; i < l; i++) {
+            k = canBeEmpty[i];
+            if (prev[k] && next[k] && prev[k] != next[k]) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+
+    var pathsDiffer = function(prev, next) {
+
+        if (typeof prev == "string") {
+            prev = parseLocation(prev);
+        }
+        if (typeof next == "string") {
+            next = parseLocation(next);
+        }
+
+        return hostsDiffer(prev, next) || prev.pathname != next.pathname ||
+            prev.search != next.search || prev.hash != next.hash;
+    };
+
+
+
+
+
+
+
+
 
     var preparePath = function(url) {
 
-        var base = location.protocol + '//' + location.hostname;
-        if (location.port) {
-            base += ':' + location.port;
-        }
-
-        url = url.replace(base, '');
-
-        if (!pushStateSupported) {
-            url = encodeURIComponent(url);
-        }
-
-        if (url.substr(0, 1) == "?") {
-            url = location.pathname + url;
-        }
-
-        if (useHash) {
-            url = url.replace("?", "#");
-        }
-
-        return url;
-    };
-
-    var sameHostLink = function(url) {
-
-        var matches = url.match(rURL);
-
-        if (matches[1] && location.protocol != matches[1]) {
-            return false;
-        }
-
-        if (matches[2] && location.hostname != matches[2]) {
-            return false;
-        }
-
-        if (!matches[2] && !matches[3]) {
-            return true;
-        }
-
-        return location.port == matches[3];
-    };
-
-    var getPathFromUrl  = function(url) {
-
-        url = "" + url;
-
-        // 0 - full url, 1 - protocol, 2 - host, 3 - port, 4 - path, 5 - search, 6 - hash
-        var matches = url.match(rURL),
-            path,
-            hash;
+        var loc = parseLocation(url);
 
         if (!pushStateSupported || useHash) {
-            hash    = matches[6];
-            if (hash.substr(0,1) == "!") {
-                path    = hash.substr(1);
-            }
+            loc.hash = "#!" + encodeURIComponent(loc.path);
+            loc.pathname = "/";
+            loc.search = "";
         }
 
-        if (!path) {
-            path    = matches[4];
-
-            if (matches[5]) {
-                path    += matches[5];
-            }
-        }
-
-        return path;
+        return joinLocation(loc, {onlyPath: true});
     };
 
-    var samePathLink = function(url) {
-        return getPathFromUrl(url) == getPathFromUrl(location);
-    };
+
+
+
+
+
+
+
+
 
     var setHash = function(hash) {
         if (hash) {
@@ -618,23 +673,27 @@ history = mhistory = function(){
     };
 
     var getCurrentUrl = function() {
-        var loc;
+        var loc,
+            tmp;
 
         if (pushStateSupported) {
-            loc = location.pathname + location.search + location.hash;
+            //loc = location.pathname + location.search + location.hash;
+            loc = joinLocation(location);
         }
         else {
             loc = location.hash.substr(1);
+            tmp = extend({}, location, true, false);
 
             if (loc) {
                 if (loc.substr(0, 1) == "!") {
                     loc = loc.substr(1);
                 }
-                loc = decodeURIComponent(loc);
+                var p = decodeURIComponent(loc).split("?");
+                tmp.pathname = p[0];
+                tmp.search = p[1] ? "?" + p[1] : "";
             }
-            else {
-                loc = location.pathname + location.search;
-            }
+
+            loc = joinLocation(tmp);
         }
 
         return loc;
@@ -665,10 +724,22 @@ history = mhistory = function(){
         }
     };
 
-    var onLocationChange = function(){
-        var url = getCurrentUrl();
+
+
+
+    var onLocationPush = function(url) {
+        prevLocation = extend({}, location, true, false);
         triggerEvent("locationChange", url);
         checkParamChange(url);
+    };
+
+    var onLocationPop = function() {
+        if (pathsDiffer(prevLocation, location)) {
+            var url = getCurrentUrl();
+            prevLocation = extend({}, location, true, false);
+            triggerEvent("locationChange", url);
+            checkParamChange(url);
+        }
     };
 
     var triggerEvent = function triggerEvent(event, data) {
@@ -686,14 +757,14 @@ history = mhistory = function(){
             //history.origPushState       = history.pushState;
             //history.origReplaceState    = history.replaceState;
 
-            addListener(win, "popstate", onLocationChange);
+            addListener(win, "popstate", onLocationPop);
 
             pushState = function(url) {
                 if (triggerEvent("beforeLocationChange", url) === false) {
                     return false;
                 }
                 history.pushState(null, null, preparePath(url));
-                onLocationChange();
+                onLocationPush(url);
             };
 
 
@@ -702,7 +773,7 @@ history = mhistory = function(){
                     return false;
                 }
                 history.replaceState(null, null, preparePath(url));
-                onLocationChange();
+                onLocationPush(url);
             };
         }
         else {
@@ -717,7 +788,7 @@ history = mhistory = function(){
                     async(setHash, null, [preparePath(url)]);
                 };
 
-                addListener(win, "hashchange", onLocationChange);
+                addListener(win, "hashchange", onLocationPop);
             }
             // iframe
             else {
@@ -736,7 +807,7 @@ history = mhistory = function(){
                     if (!initialUpdate) {
                         async(function(){
                             setHash(val);
-                            onLocationChange();
+                            onLocationPop();
                         });
                     }
                 };
@@ -805,15 +876,23 @@ history = mhistory = function(){
 
                 href = getAttr(a, "href");
 
-                if (href && href.substr(0,1) != "#" && !getAttr(a, "target") &&
-                    sameHostLink(href) && !samePathLink(href)) {
+                if (href == "#") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
 
-                    console.log("change url", href)
+                if (href && href.substr(0,1) != "#" && !getAttr(a, "target")) {
 
-                    history.pushState(null, null, getPathFromUrl(href));
+                    var prev = extend({}, location, true, false),
+                        next = parseLocation(href);
 
-                    if (pushStateSupported) {
-                        onLocationChange();
+                    if (hostsDiffer(prev, next)) {
+                        return null;
+                    }
+
+                    if (pathsDiffer(prev, next)) {
+                        pushState(href);
                     }
 
                     e.preventDefault();
