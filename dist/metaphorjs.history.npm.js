@@ -558,12 +558,12 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
-var history, mhistory;
+var mhistory, history;
 
 
 
 
-history = mhistory = function(){
+mhistory = history = function(){
 
     var win,
         history,
@@ -872,7 +872,7 @@ history = mhistory = function(){
                 a = a.parentNode;
             }
 
-            if (a) {
+            if (a && !e.isDefaultPrevented()) {
 
                 href = getAttr(a, "href");
 

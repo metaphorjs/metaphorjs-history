@@ -1338,11 +1338,12 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
+var mhistory, history;
 
 
 
 
-var history = function(){
+mhistory = history = function(){
 
     var win,
         history,
@@ -1651,7 +1652,7 @@ var history = function(){
                 a = a.parentNode;
             }
 
-            if (a) {
+            if (a && !e.isDefaultPrevented()) {
 
                 href = getAttr(a, "href");
 

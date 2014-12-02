@@ -323,7 +323,7 @@ module.exports = function(){
                 a = a.parentNode;
             }
 
-            if (a) {
+            if (a && !e.isDefaultPrevented()) {
 
                 href = getAttr(a, "href");
 
