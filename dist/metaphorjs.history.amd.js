@@ -459,30 +459,6 @@ var addListener = function(){
 
 function emptyFn(){};
 
-function isFunction(value) {
-    return typeof value == 'function';
-};
-
-
-
-function isString(value) {
-    return typeof value == "string" || value === ""+value;
-    //return typeof value == "string" || varType(value) === 0;
-};
-
-var getRegExp = function(){
-
-    var cache = {};
-
-    /**
-     * @param {String} expr
-     * @returns RegExp
-     */
-    return function getRegExp(expr) {
-        return cache[expr] || (cache[expr] = new RegExp(expr));
-    };
-}();
-
 function getAttr(el, name) {
     return el.getAttribute ? el.getAttribute(name) : null;
 };

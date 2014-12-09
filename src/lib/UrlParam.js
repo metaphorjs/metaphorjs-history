@@ -2,7 +2,6 @@
 var defineClass = require("metaphorjs-class/src/func/defineClass.js"),
     ObservableMixin = require("metaphorjs/src/mixin/ObservableMixin.js"),
     mhistory = require("../metaphorjs.history.js"),
-    isFunction = require("metaphorjs/src/func/isFunction.js"),
     isString = require("metaphorjs/src/func/isString.js"),
     extend = require("metaphorjs/src/func/extend.js"),
     getRegExp = require("metaphorjs/src/func/getRegExp.js"),
