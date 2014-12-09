@@ -673,6 +673,12 @@ extend(Observable.prototype, {
     },
 
     /**
+     * @method hasListener
+     * @access public
+     * @return bool
+     */
+
+    /**
     * @method hasListener
     * @access public
     * @param {string} name Event name { @required }
@@ -688,12 +694,23 @@ extend(Observable.prototype, {
     * @return bool
     */
     hasListener: function(name, fn, context) {
-        name = name.toLowerCase();
-        var events  = this.events;
-        if (!events[name]) {
+        var events = this.events;
+
+        if (name) {
+            name = name.toLowerCase();
+            if (!events[name]) {
+                return false;
+            }
+            return events[name].hasListener(fn, context);
+        }
+        else {
+            for (name in events) {
+                if (events[name].hasListener()) {
+                    return true;
+                }
+            }
             return false;
         }
-        return events[name].hasListener(fn, context);
     },
 
 
@@ -1225,6 +1242,9 @@ extend(Event.prototype, {
             else if (returnResult == "first") {
                 return res;
             }
+            else if (returnResult == "nonempty" && res) {
+                return res;
+            }
             else if (returnResult == "last") {
                 ret = res;
             }
@@ -1350,13 +1370,11 @@ mhistory = history = function(){
         location,
         observable      = new Observable,
         api             = {},
-        params          = {},
 
         pushState,
         replaceState,
 
         windowLoaded    = typeof window == "undefined",
-        rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
         prevLocation    = null,
 
@@ -1479,38 +1497,11 @@ mhistory = history = function(){
         return loc;
     };
 
-    var getParam = function(name, url){
-        var ex = params[name].extractor;
-        if (isFunction(ex)) {
-            return ex(url, name);
-        }
-        else {
-            var match = url.match(ex);
-            return match ? match.pop() : null;
-        }
-    };
-
-    var checkParamChange = function(url){
-        var i,
-            prev, val;
-
-        for (i in params) {
-            prev    = params[i].value;
-            val     = getParam(i, url);
-            params[i].value = val;
-            if (val != prev) {
-                observable.trigger("change-" + i, val, prev, i, url);
-            }
-        }
-    };
-
-
 
 
     var onLocationPush = function(url) {
         prevLocation = extend({}, location, true, false);
         triggerEvent("locationChange", url);
-        checkParamChange(url);
     };
 
     var onLocationPop = function() {
@@ -1518,7 +1509,6 @@ mhistory = history = function(){
             var url = getCurrentUrl();
             prevLocation = extend({}, location, true, false);
             triggerEvent("locationChange", url);
-            checkParamChange(url);
         }
     };
 
@@ -1722,31 +1712,7 @@ mhistory = history = function(){
             window.history.replaceState = function(state, title, url) {
                 replaceState(url);
             };
-        },
-
-        getParam: function(name){
-            return params[name] ? params[name].value : null;
-        },
-
-        addParam: function(name, extractor) {
-            init();
-            if (!params[name]) {
-                if (!extractor) {
-                    extractor = getRegExp(name + "=([^&]+)")
-                }
-                else if (!isFunction(extractor)) {
-                    extractor = isString(extractor) ? getRegExp(extractor) : extractor;
-                }
-
-                params[name] = {
-                    name: name,
-                    value: null,
-                    extractor: extractor
-                };
-                params[name].value = getParam(name, getCurrentUrl());
-            }
         }
-
     });
 
 }();

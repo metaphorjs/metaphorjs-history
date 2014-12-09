@@ -21,13 +21,11 @@ module.exports = function(){
         location,
         observable      = new Observable,
         api             = {},
-        params          = {},
 
         pushState,
         replaceState,
 
         windowLoaded    = typeof window == "undefined",
-        rURL            = /(?:(\w+:))?(?:\/\/(?:[^@]*@)?([^\/:\?#]+)(?::([0-9]+))?)?([^\?#]*)(?:(\?[^#]+)|\?)?(?:(#.*))?/,
 
         prevLocation    = null,
 
@@ -150,38 +148,11 @@ module.exports = function(){
         return loc;
     };
 
-    var getParam = function(name, url){
-        var ex = params[name].extractor;
-        if (isFunction(ex)) {
-            return ex(url, name);
-        }
-        else {
-            var match = url.match(ex);
-            return match ? match.pop() : null;
-        }
-    };
-
-    var checkParamChange = function(url){
-        var i,
-            prev, val;
-
-        for (i in params) {
-            prev    = params[i].value;
-            val     = getParam(i, url);
-            params[i].value = val;
-            if (val != prev) {
-                observable.trigger("change-" + i, val, prev, i, url);
-            }
-        }
-    };
-
-
 
 
     var onLocationPush = function(url) {
         prevLocation = extend({}, location, true, false);
         triggerEvent("locationChange", url);
-        checkParamChange(url);
     };
 
     var onLocationPop = function() {
@@ -189,7 +160,6 @@ module.exports = function(){
             var url = getCurrentUrl();
             prevLocation = extend({}, location, true, false);
             triggerEvent("locationChange", url);
-            checkParamChange(url);
         }
     };
 
@@ -393,31 +363,7 @@ module.exports = function(){
             window.history.replaceState = function(state, title, url) {
                 replaceState(url);
             };
-        },
-
-        getParam: function(name){
-            return params[name] ? params[name].value : null;
-        },
-
-        addParam: function(name, extractor) {
-            init();
-            if (!params[name]) {
-                if (!extractor) {
-                    extractor = getRegExp(name + "=([^&]+)")
-                }
-                else if (!isFunction(extractor)) {
-                    extractor = isString(extractor) ? getRegExp(extractor) : extractor;
-                }
-
-                params[name] = {
-                    name: name,
-                    value: null,
-                    extractor: extractor
-                };
-                params[name].value = getParam(name, getCurrentUrl());
-            }
         }
-
     });
 
 }();
