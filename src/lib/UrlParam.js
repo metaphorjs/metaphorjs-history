@@ -51,7 +51,7 @@ module.exports = (function(){
             var self = this;
             if (!self.enabled) {
                 self.enabled = true;
-                mhistory.on("locationchange", self.onLocationChange, self);
+                mhistory.on("location-change", self.onLocationChange, self);
                 self.onLocationChange(currentUrl());
             }
         },
@@ -60,7 +60,7 @@ module.exports = (function(){
             var self = this;
             if (self.enabled) {
                 self.enabled = false;
-                mhistory.un("locationchange", self.onLocationChange, self);
+                mhistory.un("location-change", self.onLocationChange, self);
             }
         },
 

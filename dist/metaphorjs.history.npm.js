@@ -677,14 +677,14 @@ mhistory = history = function(){
 
     var onLocationPush = function(url) {
         prevLocation = extend({}, location, true, false);
-        triggerEvent("locationChange", url);
+        triggerEvent("location-change", url);
     };
 
     var onLocationPop = function() {
         if (pathsDiffer(prevLocation, location)) {
             var url = getCurrentUrl();
             prevLocation = extend({}, location, true, false);
-            triggerEvent("locationChange", url);
+            triggerEvent("location-change", url);
         }
     };
 
@@ -706,7 +706,7 @@ mhistory = history = function(){
             addListener(win, "popstate", onLocationPop);
 
             pushState = function(url) {
-                if (triggerEvent("beforeLocationChange", url) === false) {
+                if (triggerEvent("before-location-change", url) === false) {
                     return false;
                 }
                 history.pushState(null, null, preparePath(url));
@@ -715,7 +715,7 @@ mhistory = history = function(){
 
 
             replaceState = function(url) {
-                if (triggerEvent("beforeLocationChange", url) === false) {
+                if (triggerEvent("before-location-change", url) === false) {
                     return false;
                 }
                 history.replaceState(null, null, preparePath(url));
@@ -728,7 +728,7 @@ mhistory = history = function(){
             if (hashChangeSupported) {
 
                 replaceState = pushState = function(url) {
-                    if (triggerEvent("beforeLocationChange", url) === false) {
+                    if (triggerEvent("before-location-change", url) === false) {
                         return false;
                     }
                     async(setHash, null, [preparePath(url)]);
@@ -778,14 +778,14 @@ mhistory = history = function(){
 
 
                 pushState = function(url) {
-                    if (triggerEvent("beforeLocationChange", url) === false) {
+                    if (triggerEvent("before-location-change", url) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
                 replaceState = function(url) {
-                    if (triggerEvent("beforeLocationChange", url) === false) {
+                    if (triggerEvent("before-location-change", url) === false) {
                         return false;
                     }
                     replaceFrame(preparePath(url));
