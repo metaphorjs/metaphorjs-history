@@ -534,12 +534,12 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
-var mhistory, history;
+var history, mhistory;
 
 
 
 
-mhistory = history = function(){
+history = mhistory = function(){
 
     var win,
         history,

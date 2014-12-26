@@ -1349,12 +1349,11 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
-var mhistory, history;
 
 
 
 
-mhistory = history = function(){
+var history = function(){
 
     var win,
         history,

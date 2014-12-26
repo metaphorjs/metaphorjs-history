@@ -1,11 +1,12 @@
 
 var defineClass = require("metaphorjs-class/src/func/defineClass.js"),
-    ObservableMixin = require("metaphorjs/src/mixin/ObservableMixin.js"),
     mhistory = require("./History.js"),
     isString = require("metaphorjs/src/func/isString.js"),
     extend = require("metaphorjs/src/func/extend.js"),
     getRegExp = require("metaphorjs/src/func/getRegExp.js"),
     currentUrl = require("../func/currentUrl.js");
+
+require("metaphorjs-observable/src/mixin/Observable.js");
 
 module.exports = (function(){
 
@@ -13,7 +14,7 @@ module.exports = (function(){
 
     var UrlParam = defineClass({
 
-        $mixins: [ObservableMixin],
+        $mixins: ["mixin.Observable"],
 
         extractor: null,
         context: null,
