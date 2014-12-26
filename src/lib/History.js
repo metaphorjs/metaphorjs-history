@@ -2,14 +2,14 @@
 
 var addListener = require("metaphorjs/src/func/event/addListener.js"),
     normalizeEvent = require("metaphorjs/src/func/event/normalizeEvent.js"),
-    Observable = require("metaphorjs-observable/src/metaphorjs.observable.js"),
+    Observable = require("metaphorjs-observable/src/lib/Observable.js"),
     extend = require("metaphorjs/src/func/extend.js"),
     emptyFn = require("metaphorjs/src/func/emptyFn.js"),
     getAttr = require("metaphorjs/src/func/dom/getAttr.js"),
     async = require("metaphorjs/src/func/async.js"),
 
-    parseLocation = require("./func/parseLocation.js"),
-    joinLocation = require("./func/joinLocation.js");
+    parseLocation = require("./../func/parseLocation.js"),
+    joinLocation = require("./../func/joinLocation.js");
 
 module.exports = function(){
 
@@ -30,7 +30,7 @@ module.exports = function(){
         hashChangeSupported,
         useHash;
 
-    observable.createEvent("beforeLocationChange", false);
+    observable.createEvent("before-location-change", false);
 
     var initWindow = function() {
         win                 = window;

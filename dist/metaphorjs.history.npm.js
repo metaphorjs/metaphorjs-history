@@ -558,7 +558,7 @@ mhistory = history = function(){
         hashChangeSupported,
         useHash;
 
-    observable.createEvent("beforeLocationChange", false);
+    observable.createEvent("before-location-change", false);
 
     var initWindow = function() {
         win                 = window;

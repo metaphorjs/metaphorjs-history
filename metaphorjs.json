@@ -13,7 +13,7 @@
             "target": "dist/metaphorjs.history.js",
             "files": [
                 [
-                    "src/metaphorjs.history.js",
+                    "src/lib/History.js",
                     {
                         "as": "history"
                     }
@@ -33,7 +33,7 @@
             },
             "files": [
                 [
-                    "src/metaphorjs.history.js",
+                    "src/lib/History.js",
                     {
                         "as": "mhistory"
                     }
@@ -43,7 +43,7 @@
                 "metaphorjs-observable": "Observable"
             },
             "omit": [
-                "../metaphorjs-observable/src/metaphorjs.observable.js"
+                "metaphorjs-observable/src/lib/Observable.js"
             ],
             "returns": "mhistory"
         },
@@ -51,14 +51,14 @@
             "target": "dist/metaphorjs.history.amd.js",
             "files": [
                 [
-                    "src/metaphorjs.history.js",
+                    "src/lib/History.js",
                     {
                         "returnExports": true
                     }
                 ]
             ],
             "omit": [
-                "../metaphorjs-observable/src/metaphorjs.observable.js"
+                "metaphorjs-observable/src/lib/Observable.js"
             ],
             "define": {
                 "name": "metaphorjs-history",
