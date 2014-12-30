@@ -1677,12 +1677,26 @@ var history = function(){
 
         push: function(url) {
             init();
-            history.pushState(null, null, url);
+
+            var prev = extend({}, location, true, false),
+                next = parseLocation(url);
+
+            if (hostsDiffer(prev, next)) {
+                return null;
+            }
+
+            if (pathsDiffer(prev, next)) {
+                pushState(url);
+            }
+
+            //history.pushState(null, null, url);
         },
 
         replace: function(url) {
             init();
-            history.replaceState(null, null, url);
+
+            replaceState(url);
+            //history.replaceState(null, null, url);
         },
 
         current: function() {
