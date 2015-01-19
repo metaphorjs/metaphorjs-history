@@ -261,6 +261,7 @@ extend(DomEvent.prototype, {
         var e = this.originalEvent;
 
         this.isPropagationStopped = returnTrue;
+        e.cancelBubble = true;
 
         if ( e && e.stopPropagation ) {
             e.stopPropagation();
@@ -1349,11 +1350,12 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
+var mhistory, history;
 
 
 
 
-var history = function(){
+mhistory = history = function(){
 
     var win,
         history,
@@ -1380,7 +1382,7 @@ var history = function(){
         location            = win.location;
         pushStateSupported  = !!history.pushState;
         hashChangeSupported = "onhashchange" in win;
-        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+        useHash             = false; //pushStateSupported && (navigator.vendor || "").match(/Opera/);
         prevLocation        = extend({}, location, true, false);
     };
 

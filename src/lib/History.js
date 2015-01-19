@@ -38,7 +38,7 @@ module.exports = function(){
         location            = win.location;
         pushStateSupported  = !!history.pushState;
         hashChangeSupported = "onhashchange" in win;
-        useHash             = pushStateSupported && (navigator.vendor || "").match(/Opera/);
+        useHash             = false; //pushStateSupported && (navigator.vendor || "").match(/Opera/);
         prevLocation        = extend({}, location, true, false);
     };
 
