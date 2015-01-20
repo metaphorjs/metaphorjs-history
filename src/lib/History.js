@@ -92,9 +92,10 @@ module.exports = function(){
         var loc = parseLocation(url);
 
         if (!pushStateSupported || useHash) {
-            loc.hash = "#!" + encodeURIComponent(loc.path);
-            loc.pathname = "/";
-            loc.search = "";
+            return loc.path;
+            //loc.hash = "#!" + encodeURIComponent(loc.path);
+            //loc.pathname = "/";
+            //loc.search = "";
         }
 
         return joinLocation(loc, {onlyPath: true});
@@ -110,8 +111,12 @@ module.exports = function(){
 
 
     var setHash = function(hash) {
+
         if (hash) {
-            location.hash = "!" + hash;
+            if (hash.substr(0,1) != '#') {
+                hash = "!" + hash;
+            }
+            location.hash = hash;
         }
         else {
             location.hash = "";

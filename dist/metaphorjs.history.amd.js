@@ -435,8 +435,16 @@ var addListener = function(){
     return function addListener(el, event, func) {
 
         if (fn === null) {
-            fn = el.attachEvent ? "attachEvent" : "addEventListener";
-            prefix = el.attachEvent ? "on" : "";
+            if (el.addEventListener) {
+                fn = "addEventListener";
+                prefix = "";
+            }
+            else {
+                fn = "attachEvent";
+                prefix = "on";
+            }
+            //fn = el.attachEvent ? "attachEvent" : "addEventListener";
+            //prefix = el.attachEvent ? "on" : "";
         }
 
 
@@ -618,9 +626,10 @@ return function(){
         var loc = parseLocation(url);
 
         if (!pushStateSupported || useHash) {
-            loc.hash = "#!" + encodeURIComponent(loc.path);
-            loc.pathname = "/";
-            loc.search = "";
+            return loc.path;
+            //loc.hash = "#!" + encodeURIComponent(loc.path);
+            //loc.pathname = "/";
+            //loc.search = "";
         }
 
         return joinLocation(loc, {onlyPath: true});
@@ -636,8 +645,12 @@ return function(){
 
 
     var setHash = function(hash) {
+
         if (hash) {
-            location.hash = "!" + hash;
+            if (hash.substr(0,1) != '#') {
+                hash = "!" + hash;
+            }
+            location.hash = hash;
         }
         else {
             location.hash = "";
