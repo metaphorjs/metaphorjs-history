@@ -236,7 +236,13 @@ module.exports = function(){
                 };
 
                 var pushFrame = function(value) {
-                    var frameDoc = frame.contentWindow.document;
+                    var frameDoc;
+                    if (frame.contentDocument) {
+                        frameDoc = frame.contentDocument;
+                    }
+                    else {
+                        frameDoc = frame.contentWindow.document;
+                    }
                     frameDoc.open();
                     //update iframe content to force new history record.
                     frameDoc.write('<html><head><title>' + document.title +

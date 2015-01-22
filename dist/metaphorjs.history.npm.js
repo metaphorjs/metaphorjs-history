@@ -129,7 +129,8 @@ var extend = function(){
         }
 
         while (args.length) {
-            if (src = args.shift()) {
+            // IE < 9 fix: check for hasOwnProperty presence
+            if ((src = args.shift()) && src.hasOwnProperty) {
                 for (k in src) {
 
                     if (src.hasOwnProperty(k) && (value = src[k]) !== undf) {
@@ -543,12 +544,12 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
-var history, mhistory;
+var mhistory, history;
 
 
 
 
-history = mhistory = function(){
+mhistory = history = function(){
 
     var win,
         history,
@@ -773,7 +774,13 @@ history = mhistory = function(){
                 };
 
                 var pushFrame = function(value) {
-                    var frameDoc = frame.contentWindow.document;
+                    var frameDoc;
+                    if (frame.contentDocument) {
+                        frameDoc = frame.contentDocument;
+                    }
+                    else {
+                        frameDoc = frame.contentWindow.document;
+                    }
                     frameDoc.open();
                     //update iframe content to force new history record.
                     frameDoc.write('<html><head><title>' + document.title +
