@@ -16,6 +16,7 @@ module.exports = (function(){
 
         $mixins: ["mixin.Observable"],
 
+        id: null,
         extractor: null,
         context: null,
         regexp: null,
