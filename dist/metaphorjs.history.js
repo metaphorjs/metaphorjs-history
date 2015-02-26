@@ -1359,12 +1359,11 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
-var mhistory, history;
 
 
 
 
-mhistory = history = function(){
+var history = function(){
 
     var win,
         history,
@@ -1518,9 +1517,9 @@ mhistory = history = function(){
         }
     };
 
-    var triggerEvent = function triggerEvent(event, data) {
+    var triggerEvent = function triggerEvent(event, data, anchor) {
         var url = data || getCurrentUrl();
-        return observable.trigger(event, url);
+        return observable.trigger(event, url, anchor);
     };
 
     var init = function() {
@@ -1535,8 +1534,8 @@ mhistory = history = function(){
 
             addListener(win, "popstate", onLocationPop);
 
-            pushState = function(url) {
-                if (triggerEvent("before-location-change", url) === false) {
+            pushState = function(url, anchor) {
+                if (triggerEvent("before-location-change", url, anchor) === false) {
                     return false;
                 }
                 history.pushState(null, null, preparePath(url));
@@ -1544,8 +1543,8 @@ mhistory = history = function(){
             };
 
 
-            replaceState = function(url) {
-                if (triggerEvent("before-location-change", url) === false) {
+            replaceState = function(url, anchor) {
+                if (triggerEvent("before-location-change", url, anchor) === false) {
                     return false;
                 }
                 history.replaceState(null, null, preparePath(url));
@@ -1557,8 +1556,8 @@ mhistory = history = function(){
             // onhashchange
             if (hashChangeSupported) {
 
-                replaceState = pushState = function(url) {
-                    if (triggerEvent("before-location-change", url) === false) {
+                replaceState = pushState = function(url, anchor) {
+                    if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     async(setHash, null, [preparePath(url)]);
@@ -1613,15 +1612,15 @@ mhistory = history = function(){
                 };
 
 
-                pushState = function(url) {
-                    if (triggerEvent("before-location-change", url) === false) {
+                pushState = function(url, anchor) {
+                    if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
-                replaceState = function(url) {
-                    if (triggerEvent("before-location-change", url) === false) {
+                replaceState = function(url, anchor) {
+                    if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     replaceFrame(preparePath(url));
@@ -1674,7 +1673,7 @@ mhistory = history = function(){
                     }
 
                     if (pathsDiffer(prev, next)) {
-                        pushState(href);
+                        pushState(href, a);
                     }
 
                     e.preventDefault();

@@ -165,9 +165,9 @@ module.exports = function(){
         }
     };
 
-    var triggerEvent = function triggerEvent(event, data) {
+    var triggerEvent = function triggerEvent(event, data, anchor) {
         var url = data || getCurrentUrl();
-        return observable.trigger(event, url);
+        return observable.trigger(event, url, anchor);
     };
 
     var init = function() {
@@ -182,8 +182,8 @@ module.exports = function(){
 
             addListener(win, "popstate", onLocationPop);
 
-            pushState = function(url) {
-                if (triggerEvent("before-location-change", url) === false) {
+            pushState = function(url, anchor) {
+                if (triggerEvent("before-location-change", url, anchor) === false) {
                     return false;
                 }
                 history.pushState(null, null, preparePath(url));
@@ -191,8 +191,8 @@ module.exports = function(){
             };
 
 
-            replaceState = function(url) {
-                if (triggerEvent("before-location-change", url) === false) {
+            replaceState = function(url, anchor) {
+                if (triggerEvent("before-location-change", url, anchor) === false) {
                     return false;
                 }
                 history.replaceState(null, null, preparePath(url));
@@ -204,8 +204,8 @@ module.exports = function(){
             // onhashchange
             if (hashChangeSupported) {
 
-                replaceState = pushState = function(url) {
-                    if (triggerEvent("before-location-change", url) === false) {
+                replaceState = pushState = function(url, anchor) {
+                    if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     async(setHash, null, [preparePath(url)]);
@@ -260,15 +260,15 @@ module.exports = function(){
                 };
 
 
-                pushState = function(url) {
-                    if (triggerEvent("before-location-change", url) === false) {
+                pushState = function(url, anchor) {
+                    if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
-                replaceState = function(url) {
-                    if (triggerEvent("before-location-change", url) === false) {
+                replaceState = function(url, anchor) {
+                    if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     replaceFrame(preparePath(url));
@@ -321,7 +321,7 @@ module.exports = function(){
                     }
 
                     if (pathsDiffer(prev, next)) {
-                        pushState(href);
+                        pushState(href, a);
                     }
 
                     e.preventDefault();
