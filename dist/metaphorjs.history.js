@@ -1359,11 +1359,12 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
+var mhistory, history;
 
 
 
 
-var history = function(){
+mhistory = history = function(){
 
     var win,
         history,
@@ -1518,8 +1519,10 @@ var history = function(){
     };
 
     var triggerEvent = function triggerEvent(event, data, anchor) {
-        var url = data || getCurrentUrl();
-        return observable.trigger(event, url, anchor);
+        var url     = data || getCurrentUrl(),
+            loc     = parseLocation(url),
+            path    = loc.pathname + loc.search + loc.hash;
+        return observable.trigger(event, path, anchor, url);
     };
 
     var init = function() {

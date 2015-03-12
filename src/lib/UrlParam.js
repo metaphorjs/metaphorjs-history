@@ -4,7 +4,8 @@ var defineClass = require("metaphorjs-class/src/func/defineClass.js"),
     isString = require("metaphorjs/src/func/isString.js"),
     extend = require("metaphorjs/src/func/extend.js"),
     getRegExp = require("metaphorjs/src/func/getRegExp.js"),
-    currentUrl = require("../func/currentUrl.js");
+    currentUrl = require("../func/currentUrl.js"),
+    parseLocation = require("../func/parseLocation.js");
 
 require("metaphorjs-observable/src/mixin/Observable.js");
 
@@ -54,7 +55,9 @@ module.exports = (function(){
             if (!self.enabled) {
                 self.enabled = true;
                 mhistory.on("location-change", self.onLocationChange, self);
-                self.onLocationChange(currentUrl());
+                var url = currentUrl(),
+                    loc = parseLocation(url);
+                self.onLocationChange(loc.pathname + loc.search + loc.hash);
             }
         },
 
