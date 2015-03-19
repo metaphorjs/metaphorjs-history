@@ -1678,6 +1678,9 @@ mhistory = history = function(){
                     if (pathsDiffer(prev, next)) {
                         pushState(href, a);
                     }
+                    else {
+                        triggerEvent("same-location", null, a);
+                    }
 
                     e.preventDefault();
                     e.stopPropagation();
