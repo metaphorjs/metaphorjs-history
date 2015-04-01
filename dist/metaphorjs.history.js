@@ -1371,6 +1371,11 @@ mhistory = history = function(){
         location,
         observable      = new Observable,
         api             = {},
+        programId       = nextUid(),
+        stateKeyId      = "$$" + programId,
+        currentId       = nextUid(),
+
+        hashIdReg       = new RegExp("#" + programId + "=([A-Z0-9]+)"),
 
         pushState,
         replaceState,
@@ -1383,6 +1388,7 @@ mhistory = history = function(){
         hashChangeSupported,
         useHash;
 
+
     observable.createEvent("before-location-change", false);
 
     var initWindow = function() {
@@ -1393,6 +1399,25 @@ mhistory = history = function(){
         hashChangeSupported = "onhashchange" in win;
         useHash             = false; //pushStateSupported && (navigator.vendor || "").match(/Opera/);
         prevLocation        = extend({}, location, true, false);
+
+    };
+
+    var preparePushState = function(state) {
+        state = state || {};
+        if (!state[stateKeyId]) {
+            state[stateKeyId] = nextUid();
+        }
+        currentId = state[stateKeyId];
+
+        return state;
+    };
+
+    var prepareReplaceState = function(state) {
+        state = state || {};
+        if (!state[stateKeyId]) {
+            state[stateKeyId] = currentId;
+        }
+        return state;
     };
 
 
@@ -1446,9 +1471,6 @@ mhistory = history = function(){
 
         if (!pushStateSupported || useHash) {
             return loc.path;
-            //loc.hash = "#!" + encodeURIComponent(loc.path);
-            //loc.pathname = "/";
-            //loc.search = "";
         }
 
         return joinLocation(loc, {onlyPath: true});
@@ -1459,15 +1481,39 @@ mhistory = history = function(){
 
 
 
+    var getCurrentStateId = function() {
 
 
+        if (pushStateSupported) {
+            return history.state[stateKeyId];
+        }
+        else {
+            return parseOutHashStateId(location.hash).id;
+        }
 
+    };
 
-    var setHash = function(hash) {
+    var parseOutHashStateId = function(hash) {
+
+        var id = null;
+
+        hash = hash.replace(hashIdReg, function(match, idMatch){
+            id = idMatch;
+            return "";
+        });
+
+        return {
+            hash: hash,
+            id: id
+        };
+    };
+
+    var setHash = function(hash, state) {
 
         if (hash) {
             if (hash.substr(0,1) != '#') {
-                hash = "!" + hash;
+                hash = parseOutHashStateId(hash).hash;
+                hash = "!" + hash + "#" + programId + "=" + currentId;
             }
             location.hash = hash;
         }
@@ -1489,6 +1535,9 @@ mhistory = history = function(){
             tmp = extend({}, location, true, false);
 
             if (loc) {
+
+                loc = parseOutHashStateId(loc).hash;
+
                 if (loc.substr(0, 1) == "!") {
                     loc = loc.substr(1);
                 }
@@ -1504,7 +1553,6 @@ mhistory = history = function(){
     };
 
 
-
     var onLocationPush = function(url) {
         prevLocation = extend({}, location, true, false);
         triggerEvent("location-change", url);
@@ -1512,8 +1560,15 @@ mhistory = history = function(){
 
     var onLocationPop = function() {
         if (pathsDiffer(prevLocation, location)) {
-            var url = getCurrentUrl();
-            prevLocation = extend({}, location, true, false);
+
+            var url     = getCurrentUrl(),
+                state   = history.state || {};
+
+            triggerEvent("before-location-pop", url);
+
+            currentId       = getCurrentStateId();
+            prevLocation    = extend({}, location, true, false);
+
             triggerEvent("location-change", url);
         }
     };
@@ -1537,33 +1592,36 @@ mhistory = history = function(){
 
             addListener(win, "popstate", onLocationPop);
 
-            pushState = function(url, anchor) {
+            pushState = function(url, anchor, state) {
                 if (triggerEvent("before-location-change", url, anchor) === false) {
                     return false;
                 }
-                history.pushState(null, null, preparePath(url));
+                history.pushState(preparePushState(state), null, preparePath(url));
                 onLocationPush(url);
             };
 
 
-            replaceState = function(url, anchor) {
-                if (triggerEvent("before-location-change", url, anchor) === false) {
-                    return false;
-                }
-                history.replaceState(null, null, preparePath(url));
+            replaceState = function(url, anchor, state) {
+                history.replaceState(prepareReplaceState(state), null, preparePath(url));
                 onLocationPush(url);
             };
+
+            replaceState(getCurrentUrl());
         }
         else {
 
             // onhashchange
             if (hashChangeSupported) {
 
-                replaceState = pushState = function(url, anchor) {
+                pushState = function(url, anchor, state) {
                     if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
-                    async(setHash, null, [preparePath(url)]);
+                    async(setHash, null, [preparePath(url), preparePushState(state)]);
+                };
+
+                replaceState = function(url, anchor, state) {
+                    async(setHash, null, [preparePath(url), prepareReplaceState(state)]);
                 };
 
                 addListener(win, "hashchange", onLocationPop);
@@ -1615,14 +1673,14 @@ mhistory = history = function(){
                 };
 
 
-                pushState = function(url, anchor) {
+                pushState = function(url, anchor, state) {
                     if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
-                replaceState = function(url, anchor) {
+                replaceState = function(url, anchor, state) {
                     if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
@@ -1702,7 +1760,7 @@ mhistory = history = function(){
 
     return extend(api, observable.getApi(), {
 
-        push: function(url) {
+        push: function(url, state) {
             init();
 
             var prev = extend({}, location, true, false),
@@ -1713,17 +1771,30 @@ mhistory = history = function(){
             }
 
             if (pathsDiffer(prev, next)) {
-                pushState(url);
+                pushState(url, null, state);
             }
-
-            //history.pushState(null, null, url);
         },
 
-        replace: function(url) {
+        replace: function(url, state) {
             init();
+            replaceState(url, null, state);
+        },
 
-            replaceState(url);
-            //history.replaceState(null, null, url);
+        saveState: function(state) {
+            init();
+            replaceState(getCurrentUrl(), null, state);
+        },
+
+        mergeState: function(state) {
+            this.saveState(extend({}, history.state, state, true, false));
+        },
+
+        getState: function() {
+            return history.state;
+        },
+
+        getCurrentStateId: function() {
+            return currentId;
         },
 
         current: function() {
@@ -1738,10 +1809,10 @@ mhistory = history = function(){
         polyfill: function() {
             init();
             window.history.pushState = function(state, title, url) {
-                pushState(url);
+                pushState(url, null, state);
             };
             window.history.replaceState = function(state, title, url) {
-                replaceState(url);
+                replaceState(url, null, state);
             };
         }
     });

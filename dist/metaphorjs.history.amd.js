@@ -484,6 +484,38 @@ function async(fn, context, args, timeout) {
     }, timeout || 0);
 };
 
+
+var nextUid = function(){
+    var uid = ['0', '0', '0'];
+
+    // from AngularJs
+    /**
+     * @returns {String}
+     */
+    return function nextUid() {
+        var index = uid.length;
+        var digit;
+
+        while(index) {
+            index--;
+            digit = uid[index].charCodeAt(0);
+            if (digit == 57 /*'9'*/) {
+                uid[index] = 'A';
+                return uid.join('');
+            }
+            if (digit == 90  /*'Z'*/) {
+                uid[index] = '0';
+            } else {
+                uid[index] = String.fromCharCode(digit + 1);
+                return uid.join('');
+            }
+        }
+        uid.unshift('0');
+        return uid.join('');
+    };
+}();
+
+
 var rParseLocation = /^(((([^:\/#\?]+:)?(?:(\/\/)((?:(([^:@\/#\?]+)(?:\:([^:@\/#\?]+))?)@)?(([^:\/#\?\]\[]+|\[[^\/\]@#?]+\])(?:\:([0-9]+))?))?)?)?((\/?(?:[^\/\?#]+\/+)*)([^\?#]*)))?(\?[^#]+)?)(#.*)?/;
 
 
@@ -553,6 +585,11 @@ return function(){
         location,
         observable      = new Observable,
         api             = {},
+        programId       = nextUid(),
+        stateKeyId      = "$$" + programId,
+        currentId       = nextUid(),
+
+        hashIdReg       = new RegExp("#" + programId + "=([A-Z0-9]+)"),
 
         pushState,
         replaceState,
@@ -565,6 +602,7 @@ return function(){
         hashChangeSupported,
         useHash;
 
+
     observable.createEvent("before-location-change", false);
 
     var initWindow = function() {
@@ -575,6 +613,25 @@ return function(){
         hashChangeSupported = "onhashchange" in win;
         useHash             = false; //pushStateSupported && (navigator.vendor || "").match(/Opera/);
         prevLocation        = extend({}, location, true, false);
+
+    };
+
+    var preparePushState = function(state) {
+        state = state || {};
+        if (!state[stateKeyId]) {
+            state[stateKeyId] = nextUid();
+        }
+        currentId = state[stateKeyId];
+
+        return state;
+    };
+
+    var prepareReplaceState = function(state) {
+        state = state || {};
+        if (!state[stateKeyId]) {
+            state[stateKeyId] = currentId;
+        }
+        return state;
     };
 
 
@@ -628,9 +685,6 @@ return function(){
 
         if (!pushStateSupported || useHash) {
             return loc.path;
-            //loc.hash = "#!" + encodeURIComponent(loc.path);
-            //loc.pathname = "/";
-            //loc.search = "";
         }
 
         return joinLocation(loc, {onlyPath: true});
@@ -641,15 +695,39 @@ return function(){
 
 
 
+    var getCurrentStateId = function() {
 
 
+        if (pushStateSupported) {
+            return history.state[stateKeyId];
+        }
+        else {
+            return parseOutHashStateId(location.hash).id;
+        }
 
+    };
 
-    var setHash = function(hash) {
+    var parseOutHashStateId = function(hash) {
+
+        var id = null;
+
+        hash = hash.replace(hashIdReg, function(match, idMatch){
+            id = idMatch;
+            return "";
+        });
+
+        return {
+            hash: hash,
+            id: id
+        };
+    };
+
+    var setHash = function(hash, state) {
 
         if (hash) {
             if (hash.substr(0,1) != '#') {
-                hash = "!" + hash;
+                hash = parseOutHashStateId(hash).hash;
+                hash = "!" + hash + "#" + programId + "=" + currentId;
             }
             location.hash = hash;
         }
@@ -671,6 +749,9 @@ return function(){
             tmp = extend({}, location, true, false);
 
             if (loc) {
+
+                loc = parseOutHashStateId(loc).hash;
+
                 if (loc.substr(0, 1) == "!") {
                     loc = loc.substr(1);
                 }
@@ -686,7 +767,6 @@ return function(){
     };
 
 
-
     var onLocationPush = function(url) {
         prevLocation = extend({}, location, true, false);
         triggerEvent("location-change", url);
@@ -694,8 +774,15 @@ return function(){
 
     var onLocationPop = function() {
         if (pathsDiffer(prevLocation, location)) {
-            var url = getCurrentUrl();
-            prevLocation = extend({}, location, true, false);
+
+            var url     = getCurrentUrl(),
+                state   = history.state || {};
+
+            triggerEvent("before-location-pop", url);
+
+            currentId       = getCurrentStateId();
+            prevLocation    = extend({}, location, true, false);
+
             triggerEvent("location-change", url);
         }
     };
@@ -719,33 +806,36 @@ return function(){
 
             addListener(win, "popstate", onLocationPop);
 
-            pushState = function(url, anchor) {
+            pushState = function(url, anchor, state) {
                 if (triggerEvent("before-location-change", url, anchor) === false) {
                     return false;
                 }
-                history.pushState(null, null, preparePath(url));
+                history.pushState(preparePushState(state), null, preparePath(url));
                 onLocationPush(url);
             };
 
 
-            replaceState = function(url, anchor) {
-                if (triggerEvent("before-location-change", url, anchor) === false) {
-                    return false;
-                }
-                history.replaceState(null, null, preparePath(url));
+            replaceState = function(url, anchor, state) {
+                history.replaceState(prepareReplaceState(state), null, preparePath(url));
                 onLocationPush(url);
             };
+
+            replaceState(getCurrentUrl());
         }
         else {
 
             // onhashchange
             if (hashChangeSupported) {
 
-                replaceState = pushState = function(url, anchor) {
+                pushState = function(url, anchor, state) {
                     if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
-                    async(setHash, null, [preparePath(url)]);
+                    async(setHash, null, [preparePath(url), preparePushState(state)]);
+                };
+
+                replaceState = function(url, anchor, state) {
+                    async(setHash, null, [preparePath(url), prepareReplaceState(state)]);
                 };
 
                 addListener(win, "hashchange", onLocationPop);
@@ -797,14 +887,14 @@ return function(){
                 };
 
 
-                pushState = function(url, anchor) {
+                pushState = function(url, anchor, state) {
                     if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
                     pushFrame(preparePath(url));
                 };
 
-                replaceState = function(url, anchor) {
+                replaceState = function(url, anchor, state) {
                     if (triggerEvent("before-location-change", url, anchor) === false) {
                         return false;
                     }
@@ -884,7 +974,7 @@ return function(){
 
     return extend(api, observable.getApi(), {
 
-        push: function(url) {
+        push: function(url, state) {
             init();
 
             var prev = extend({}, location, true, false),
@@ -895,17 +985,30 @@ return function(){
             }
 
             if (pathsDiffer(prev, next)) {
-                pushState(url);
+                pushState(url, null, state);
             }
-
-            //history.pushState(null, null, url);
         },
 
-        replace: function(url) {
+        replace: function(url, state) {
             init();
+            replaceState(url, null, state);
+        },
 
-            replaceState(url);
-            //history.replaceState(null, null, url);
+        saveState: function(state) {
+            init();
+            replaceState(getCurrentUrl(), null, state);
+        },
+
+        mergeState: function(state) {
+            this.saveState(extend({}, history.state, state, true, false));
+        },
+
+        getState: function() {
+            return history.state;
+        },
+
+        getCurrentStateId: function() {
+            return currentId;
         },
 
         current: function() {
@@ -920,10 +1023,10 @@ return function(){
         polyfill: function() {
             init();
             window.history.pushState = function(state, title, url) {
-                pushState(url);
+                pushState(url, null, state);
             };
             window.history.replaceState = function(state, title, url) {
-                replaceState(url);
+                replaceState(url, null, state);
             };
         }
     });
