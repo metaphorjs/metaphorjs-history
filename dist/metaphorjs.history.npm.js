@@ -576,12 +576,12 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
-var mhistory, history;
+var history, mhistory;
 
 
 
 
-mhistory = history = function(){
+history = mhistory = function(){
 
     var win,
         history,
@@ -607,6 +607,7 @@ mhistory = history = function(){
 
 
     observable.createEvent("before-location-change", false);
+    observable.createEvent("void-click", false);
 
     var initWindow = function() {
         win                 = window;
@@ -936,9 +937,14 @@ mhistory = history = function(){
                 href = getAttr(a, "href");
 
                 if (href == "#") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
+
+                    var res = observable.trigger("void-click", a);
+
+                    if (!res) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
                 }
 
                 if (href && href.substr(0,1) != "#" && !getAttr(a, "target")) {

@@ -864,6 +864,10 @@ var ObservableEvent = (function(){
                     continue;
                 }
 
+                if (l.filter && l.filter.apply(l.filterContext || l.context, args) === false) {
+                    continue;
+                }
+
                 l.count++;
 
                 if (l.count < l.start) {
@@ -1359,12 +1363,11 @@ var joinLocation = function(location, opt) {
 
     return url;
 };
-var mhistory, history;
 
 
 
 
-mhistory = history = function(){
+var history = function(){
 
     var win,
         history,
@@ -1390,6 +1393,7 @@ mhistory = history = function(){
 
 
     observable.createEvent("before-location-change", false);
+    observable.createEvent("void-click", false);
 
     var initWindow = function() {
         win                 = window;
@@ -1719,9 +1723,14 @@ mhistory = history = function(){
                 href = getAttr(a, "href");
 
                 if (href == "#") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
+
+                    var res = observable.trigger("void-click", a);
+
+                    if (!res) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
                 }
 
                 if (href && href.substr(0,1) != "#" && !getAttr(a, "target")) {

@@ -604,6 +604,7 @@ return function(){
 
 
     observable.createEvent("before-location-change", false);
+    observable.createEvent("void-click", false);
 
     var initWindow = function() {
         win                 = window;
@@ -933,9 +934,14 @@ return function(){
                 href = getAttr(a, "href");
 
                 if (href == "#") {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    return false;
+
+                    var res = observable.trigger("void-click", a);
+
+                    if (!res) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
                 }
 
                 if (href && href.substr(0,1) != "#" && !getAttr(a, "target")) {
