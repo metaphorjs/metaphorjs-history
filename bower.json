@@ -5,7 +5,6 @@
         "kuindji <kuindji@gmail.com>"
     ],
     "description": "MetaphorJs pushState stateless implementation",
-    "main": "dist/metaphorjs.history.amd.min.js",
     "moduleType": [
         "amd"
     ],

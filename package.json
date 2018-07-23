@@ -2,7 +2,6 @@
     "name": "metaphorjs-history",
     "version": "0.1.2",
     "description": "MetaphorJs pushState stateless implementation",
-    "main": "dist/metaphorjs.history.npm.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1"
     },
@@ -15,8 +14,5 @@
     "bugs": {
         "url": "https://github.com/metaphorjs/metaphorjs-history/issues"
     },
-    "homepage": "https://github.com/metaphorjs/metaphorjs-history",
-    "dependencies": {
-        "metaphorjs-observable": "*"
-    }
+    "homepage": "https://github.com/metaphorjs/metaphorjs-history"
 }
