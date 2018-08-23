@@ -134,7 +134,7 @@ module.exports = function(){
 
 
         if (pushStateSupported) {
-            return history.state[stateKeyId];
+            return history.state ? history.state[stateKeyId] : null;
         }
         else {
             return parseOutHashStateId(location.hash).id;
