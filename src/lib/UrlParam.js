@@ -1,5 +1,6 @@
 
-var defineClass = require("metaphorjs-class/src/func/defineClass.js"),
+var cls = require("metaphorjs-class/src/cls.js"),
+    MetaphorJs = require("metaphorjs/src/MetaphorJs.js"),
     mhistory = require("./History.js"),
     isString = require("metaphorjs/src/func/isString.js"),
     extend = require("metaphorjs/src/func/extend.js"),
@@ -13,9 +14,9 @@ module.exports = (function(){
 
     var cache = {};
 
-    var UrlParam = defineClass({
+    var UrlParam = cls({
 
-        $mixins: ["mixin.Observable"],
+        $mixins: [MetaphorJs.mixin.Observable],
 
         id: null,
         name: null,
@@ -109,7 +110,7 @@ module.exports = (function(){
             }
         },
 
-        destroy: function() {
+        onDestroy: function() {
             var self = this;
             self.disable();
         }
